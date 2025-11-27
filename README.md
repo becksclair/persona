@@ -1,32 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Persona ✨
 
-## Getting Started
+Persona is an AI companion app that lets you chat with custom built personality constructs, tweak model behavior, and experiment with memory controls—all without leaving a single screen. Think of it as a sandbox for testing how tone, prompts, and retrieval settings change the feel of an AI chat experience.
 
-Install deps with pnpm (repo is pnpm-based): `pnpm install`.
+> Prototype-first mindset: we prioritize showing the experience quickly, then layering depth. Security and polish are intentionally light for now.
 
-Start the dev server:
+## 💡 Why you'll like it
+
+- **Multiple characters** – Pick from Sam (friend), Therapist, Coding Guru, Creative Writer, Data Analyst, or roll your own custom persona with a bespoke system prompt.
+- **Model dial-ins** – Swap between models (GPT-3.5, GPT-4, Claude 2, Local Llama), adjust temperature, and set token budgets on the fly.
+- **Memory playground** – Toggle long-term memory, upload knowledge bases (UI only for now), and control context recall via sliders.
+- **Streaming chat** – Messages stream in real time with OpenAI's SDK, giving that "typing" feel users expect.
+- **State persistence** – Zustand keeps your settings and personalities across reloads so your setup is always waiting for you.
+
+## 🧱 Tech stack
+
+- Next.js 16 (App Router) + React 19
+- Tailwind CSS v4 with custom dark-teal theme
+- shadcn/Radix UI primitives for consistent widgets
+- Zustand + Zod for state and validation
+- Vercel AI SDK for streaming chat transport
+
+## 🚀 Quick start
 
 ```bash
-pnpm dev
+pnpm install      # install dependencies
+pnpm dev          # start the dev server on <http://localhost:3000>
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+To actually hit OpenAI, set `OPENAI_API_KEY` in your environment before running the dev server. Without it, the UI works but chat will error.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🧭 Project tour
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```text
+app/              # App Router pages, layouts, and API routes
+components/       # UI building blocks plus chat + sidebar surfaces
+lib/              # Global store, schemas, and utilities
+public/           # Static assets (avatars, icons)
+specs/            # Mockups and design references
+```
 
-## Learn More
+Key UI flow lives in `components/app-shell.tsx`, which composes the left history rail, central chat interface, and right control panel.
 
-To learn more about Next.js, take a look at the following resources:
+## 🧪 Useful scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Command        | Purpose |
+| -------------- | ------- |
+| `pnpm dev`     | Run the local dev server |
+| `pnpm build`   | Production build + type check |
+| `pnpm lint`    | oxlint (type-aware) |
+| `pnpm format`  | oxfmt auto-formatting |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🗺️ Roadmap snapshot
 
-## Deploy on Vercel
+- ✅ Core layout, personalities, streaming chat, knobs for model + memory, and themed UI are already in.
+- 🟡 Still missing: real file uploads for the knowledge base, persistent chat threads, and multi-thread management.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🤝 Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Issues and PRs are welcome—keep commits tight and descriptive per the repo guidelines (`add persona slider`, `fix chat stream`, etc.). If you tweak UI, include before/after screenshots in the PR.
+
+---
+
+Have ideas for new personas or memory tricks? File an issue or open a PR—we iterate fast.
