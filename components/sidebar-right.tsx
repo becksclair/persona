@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
-import { AVAILABLE_MODELS } from "@/lib/types";
+import {
+  ModelService,
+  type ModelDefinition,
+  type ProviderStatus,
+} from "@/lib/model-service";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -57,10 +61,37 @@ function getAvatarColor(name: string): string {
 
 export function SidebarRight() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [providerStatus, setProviderStatus] = useState<ProviderStatus[]>([]);
   const { modelSettings, updateModelSettings, ragSettings, updateRAGSettings } = useAppStore();
   const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter } =
     useCharacters();
   const { activeCharacterId, setActiveCharacter, startNewChat } = useChatStore();
+
+  // Memoize available models list
+  const availableModels = useMemo(() => ModelService.getAvailableModels(), []);
+
+  // Check provider availability on mount
+  useEffect(() => {
+    const checkProviders = async () => {
+      try {
+        const res = await fetch("/api/models?checkStatus=true");
+        if (res.ok) {
+          const data = await res.json();
+          setProviderStatus(data.providers ?? []);
+        }
+      } catch {
+        // Silently fail - status check is optional
+      }
+    };
+    void checkProviders();
+  }, []);
+
+  // Get provider availability map
+  const providerAvailability = useMemo(() => {
+    const map = new Map<string, boolean>();
+    providerStatus.forEach((p) => map.set(p.provider, p.available));
+    return map;
+  }, [providerStatus]);
 
   // Filter characters by search
   const filteredCharacters = useMemo(() => {
@@ -232,29 +263,53 @@ export function SidebarRight() {
             <Label className="text-sm font-medium">Model Settings</Label>
 
             {/* Model Selection as radio-like list */}
-            <div className="space-y-1 rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-1">
-              {AVAILABLE_MODELS.map((model) => (
-                <button
-                  key={model.id}
-                  onClick={() => updateModelSettings({ model: model.id })}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
-                    modelSettings.model === model.id
-                      ? "bg-sidebar-accent text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50",
-                  )}
-                >
-                  <span>{model.name}</span>
-                  <span className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded",
-                    model.provider === "lmstudio" 
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-blue-500/20 text-blue-400"
-                  )}>
-                    {model.provider === "lmstudio" ? "Local" : "Cloud"}
-                  </span>
-                </button>
-              ))}
+            <div className="space-y-1 rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-1 max-h-64 overflow-y-auto">
+              {availableModels.map((model: ModelDefinition) => {
+                const isAvailable = providerAvailability.get(model.provider) ?? true;
+                return (
+                  <button
+                    key={model.id}
+                    onClick={() => updateModelSettings({ model: model.id })}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
+                      modelSettings.model === model.id
+                        ? "bg-sidebar-accent text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50",
+                      !isAvailable && "opacity-50",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {/* Availability indicator */}
+                        <span
+                          className={cn(
+                            "w-2 h-2 rounded-full shrink-0",
+                            isAvailable ? "bg-emerald-500" : "bg-red-500"
+                          )}
+                          title={isAvailable ? "Available" : "Unavailable"}
+                        />
+                        <span className="truncate font-medium">{model.name}</span>
+                      </div>
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded shrink-0",
+                        model.isLocal
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : "bg-blue-500/20 text-blue-400"
+                      )}>
+                        {model.isLocal ? "Local" : "Cloud"}
+                      </span>
+                    </div>
+                    {/* Model metadata row */}
+                    <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground ml-4">
+                      <span title="Context window">{ModelService.formatContextWindow(model.contextWindow)}</span>
+                      <span className="opacity-40">•</span>
+                      <span title="Speed">{ModelService.getSpeedIndicator(model.speed)}</span>
+                      <span className="opacity-40">•</span>
+                      <span title="Cost">{ModelService.getCostIndicator(model.cost)}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Temperature Slider */}

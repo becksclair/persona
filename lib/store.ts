@@ -7,8 +7,8 @@ import {
   PersonalitySchema,
   ModelSettingsSchema,
   RAGSettingsSchema,
-  getModelById,
 } from "./types";
+import { ModelService } from "./model-service";
 
 interface AppStore {
   personalities: Personality[];
@@ -117,7 +117,7 @@ export const useAppStore = create<AppStore>()(
 
           // Auto-set provider when model changes
           if (settings.model) {
-            const modelDef = getModelById(settings.model);
+            const modelDef = ModelService.getModelById(settings.model);
             if (modelDef) {
               newSettings.provider = modelDef.provider;
             }

@@ -7,14 +7,12 @@ import {
   ModelProviderSchema,
 } from "@/lib/types";
 
-describe("Model Types", () => {
+describe("Model Types (Legacy Compatibility)", () => {
   describe("AVAILABLE_MODELS", () => {
-    it("contains all required OpenAI models", () => {
+    it("contains OpenAI cloud models", () => {
       const openAiModels = AVAILABLE_MODELS.filter((m) => m.provider === "openai");
       const modelIds = openAiModels.map((m) => m.id);
 
-      expect(modelIds).toContain("gpt-5-pro");
-      expect(modelIds).toContain("gpt-5-nano");
       expect(modelIds).toContain("gpt-4.1");
       expect(modelIds).toContain("gpt-4.1-mini");
     });
@@ -39,13 +37,19 @@ describe("Model Types", () => {
         expect(model.contextWindow).toBeGreaterThan(0);
       });
     });
+
+    it("all models have isLocal flag", () => {
+      AVAILABLE_MODELS.forEach((model) => {
+        expect(typeof model.isLocal).toBe("boolean");
+      });
+    });
   });
 
   describe("getModelById", () => {
     it("returns correct model for valid id", () => {
-      const model = getModelById("gpt-5-pro");
+      const model = getModelById("gpt-4.1");
       expect(model).toBeDefined();
-      expect(model?.name).toBe("GPT-5 Pro");
+      expect(model?.name).toBe("GPT-4.1");
       expect(model?.provider).toBe("openai");
     });
 
@@ -65,10 +69,11 @@ describe("Model Types", () => {
     it("accepts valid providers", () => {
       expect(ModelProviderSchema.safeParse("openai").success).toBe(true);
       expect(ModelProviderSchema.safeParse("lmstudio").success).toBe(true);
+      expect(ModelProviderSchema.safeParse("anthropic").success).toBe(true);
+      expect(ModelProviderSchema.safeParse("google").success).toBe(true);
     });
 
     it("rejects invalid providers", () => {
-      expect(ModelProviderSchema.safeParse("anthropic").success).toBe(false);
       expect(ModelProviderSchema.safeParse("invalid").success).toBe(false);
     });
   });

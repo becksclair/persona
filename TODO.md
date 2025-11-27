@@ -57,15 +57,15 @@
 
 ### 1.3 Model Settings (Per Character, Per Chat Overrides)
 
-- [ ] Load authoritative model metadata from `config/models.json` (JSON config file including provider type enum and Cloud vs Local flags).
-- [ ] Define `config/models.json` schema (id, provider, metadata) and add a loader in `lib` to read it at runtime.
-- [ ] Extend model metadata to include context window + rough speed/cost indicators, deriving values from providers when simple enough.
-- [ ] Persist per-character default model/profile, temperature, and basic sampling knobs (`operational_profile`).
-- [ ] Allow per-chat overrides of model/profile and remember last-used model per conversation (overrides affect that conversation only).
-- [ ] Ensure existing conversations keep their current model if a character’s default model changes later.
-- [ ] Ensure `/api/chat` uses per-chat overrides falling back to per-character defaults.
-- [ ] Update right panel UI to display Cloud vs Local badges, context size, speed/cost hints.
-- [ ] Add tests to ensure correct model/provider is chosen for each chat turn (including local vs cloud selection).
+- [x] Load authoritative model metadata from `config/models.json` (JSON config file including provider type enum and Cloud vs Local flags).
+- [x] Define `config/models.json` schema (id, provider, metadata) and add a loader in `lib` to read it at runtime.
+- [x] Extend model metadata to include context window + rough speed/cost indicators, deriving values from providers when simple enough.
+- [x] Persist per-character default model/profile, temperature, and basic sampling knobs (`operational_profile`).
+- [x] Allow per-chat overrides of model/profile and remember last-used model per conversation (overrides affect that conversation only).
+- [x] Ensure existing conversations keep their current model if a character's default model changes later.
+- [x] Ensure `/api/chat` uses per-chat overrides falling back to per-character defaults.
+- [x] Update right panel UI to display Cloud vs Local badges, context size, speed/cost hints.
+- [x] Add tests to ensure correct model/provider is chosen for each chat turn (including local vs cloud selection).
 
 ### 1.4 RAG / Knowledge Base (Per Character)
 

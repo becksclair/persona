@@ -32,10 +32,10 @@ describe("AppStore", () => {
     it("updates model and auto-sets provider for OpenAI", () => {
       const { updateModelSettings } = useAppStore.getState();
 
-      updateModelSettings({ model: "gpt-5-pro" });
+      updateModelSettings({ model: "gpt-4.1" });
 
       const state = useAppStore.getState();
-      expect(state.modelSettings.model).toBe("gpt-5-pro");
+      expect(state.modelSettings.model).toBe("gpt-4.1");
       expect(state.modelSettings.provider).toBe("openai");
     });
 

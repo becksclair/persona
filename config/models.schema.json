@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Models Configuration",
+  "description": "Configuration for available AI models and profiles",
+  "type": "object",
+  "required": ["version", "models", "defaultModelId"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version"
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "provider", "isLocal"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique model identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["openai", "lmstudio", "anthropic", "google"],
+            "description": "Model provider"
+          },
+          "isLocal": {
+            "type": "boolean",
+            "description": "Whether model runs locally"
+          },
+          "contextWindow": {
+            "type": "integer",
+            "description": "Max context window in tokens"
+          },
+          "maxOutputTokens": {
+            "type": "integer",
+            "description": "Max output tokens"
+          },
+          "speed": {
+            "type": "string",
+            "enum": ["very-fast", "fast", "medium", "slow"],
+            "description": "Relative speed indicator"
+          },
+          "cost": {
+            "type": "string",
+            "enum": ["free", "low", "medium", "high", "very-high"],
+            "description": "Relative cost indicator"
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief model description"
+          }
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "defaultModelId"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "defaultModelId": {
+            "type": "string"
+          },
+          "defaultTemperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
+          }
+        }
+      }
+    },
+    "defaultModelId": {
+      "type": "string",
+      "description": "Default model ID when none specified"
+    },
+    "defaultTemperature": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2,
+      "description": "Default temperature"
+    }
+  }
+}
