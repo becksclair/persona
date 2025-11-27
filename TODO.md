@@ -260,6 +260,8 @@
 
 ## Phase 9 – Sessions, Mood, Evolve, Deep Insight (Engine)
 
+### 9.1 Engine Features
+
 - [ ] Implement MoodState model and update rules (ephemeral tone layer).
 - [ ] Integrate mood snapshot into prompts and UI mood badges.
 - [ ] Implement inner monologue + subconscious agent (`executive_subconscious_think`).
@@ -267,3 +269,7 @@
 - [ ] Implement RelationshipState and Evolve mode behavior modulation.
 - [ ] Build graph inspector UI + APIs (Insight Mode) for advanced users.
 - [ ] Add developer tooling to inspect logs, monologue, and cognitive graph during dev.
+
+### Maintenance
+
+- [ ] Revisit deprecated subdependencies (`@esbuild-kit/core-utils`, `@esbuild-kit/esm-loader`) on the next toolchain upgrade cycle and replace or remove them if upstream fixes are available.
