@@ -1,8 +1,22 @@
-import { openai } from "@ai-sdk/openai";
-import { streamText } from "ai";
+import { openai, createOpenAI } from "@ai-sdk/openai";
+import { streamText, convertToModelMessages } from "ai";
+import type { ModelSettings } from "@/lib/types";
 
-// Allow streaming responses up to 30 seconds
-export const maxDuration = 30;
+/**
+ * Chat API Route - Handles both OpenAI and LM Studio providers
+ *
+ * Smoke test (LM Studio):
+ * ```
+ * curl -X POST http://localhost:3000/api/chat \
+ *   -H "Content-Type: application/json" \
+ *   -d '{"messages":[{"role":"user","parts":[{"type":"text","text":"hi"}]}],"personalityId":"sam","modelSettings":{"model":"qwen/qwen3-8b","provider":"lmstudio"}}'
+ * ```
+ *
+ * Note: AI SDK v5 sends UIMessage[] from useChat. Must convert to ModelMessage[] via convertToModelMessages().
+ */
+
+// Allow streaming responses up to 60 seconds for local models
+export const maxDuration = 60;
 
 // Personality system prompts
 const PERSONALITY_PROMPTS: Record<string, string> = {
@@ -18,22 +32,72 @@ const PERSONALITY_PROMPTS: Record<string, string> = {
   custom: "You are a helpful AI assistant. Respond thoughtfully and helpfully.",
 };
 
-export async function POST(req: Request) {
-  const { messages, personalityId, modelSettings } = await req.json();
+// Create LM Studio provider (OpenAI-compatible API)
+function createLmStudioProvider(baseUrl: string) {
+  return createOpenAI({
+    baseURL: baseUrl,
+    apiKey: "lm-studio", // LM Studio doesn't require a real API key
+  });
+}
 
-  const systemPrompt = PERSONALITY_PROMPTS[personalityId] || PERSONALITY_PROMPTS.sam;
+// Get the appropriate model provider based on settings
+function getModelProvider(modelSettings: ModelSettings) {
+  const provider = modelSettings?.provider || "openai";
+  const modelId = modelSettings?.model || "gpt-4.1-mini";
+
+  if (provider === "lmstudio") {
+    const lmStudio = createLmStudioProvider(
+      modelSettings?.lmStudioBaseUrl || "http://localhost:1234/v1"
+    );
+    // For LM Studio, use a generic model identifier or the model name
+    return lmStudio(modelId);
+  }
+
+  // Default to OpenAI
+  return openai(modelId);
+}
+
+export async function POST(req: Request) {
+  let body: { messages?: unknown; personalityId?: string; modelSettings?: ModelSettings };
 
   try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { messages, personalityId, modelSettings } = body;
+
+  if (!messages || !Array.isArray(messages)) {
+    return Response.json({ error: "messages array required" }, { status: 400 });
+  }
+
+  const systemPrompt = PERSONALITY_PROMPTS[personalityId ?? ""] || PERSONALITY_PROMPTS.sam;
+  const provider = modelSettings?.provider || "openai";
+  const modelId = modelSettings?.model || "gpt-4.1-mini";
+
+  try {
+    const model = getModelProvider(modelSettings ?? { model: modelId, provider, temperature: 0.7, maxOutputTokens: 4096, streamResponse: true, lmStudioBaseUrl: "http://localhost:1234/v1" });
+
+    // AI SDK v5: Convert UIMessage[] to ModelMessage[] for streamText
+    const modelMessages = convertToModelMessages(messages);
+
     const result = streamText({
-      model: openai(modelSettings?.model || "gpt-3.5-turbo"),
+      model,
       system: systemPrompt,
-      messages,
+      messages: modelMessages,
       temperature: modelSettings?.temperature || 0.7,
     });
 
     return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error("AI SDK Error:", error);
-    return new Response("Error processing request", { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[chat] ${provider}/${modelId} error:`, message);
+
+    // Return structured error for client-side handling
+    return Response.json(
+      { error: message, provider, model: modelId },
+      { status: 500 }
+    );
   }
 }

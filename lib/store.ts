@@ -7,6 +7,7 @@ import {
   PersonalitySchema,
   ModelSettingsSchema,
   RAGSettingsSchema,
+  getModelById,
 } from "./types";
 
 interface AppStore {
@@ -82,10 +83,12 @@ const DEFAULT_PERSONALITIES: Personality[] = [
 ];
 
 const DEFAULT_MODEL_SETTINGS: ModelSettings = {
-  model: "gpt-4",
+  model: "qwen/qwen3-8b", // Default to local model for testing
+  provider: "lmstudio",
   temperature: 0.7,
   maxOutputTokens: 4096,
   streamResponse: true,
+  lmStudioBaseUrl: "http://localhost:1234/v1",
 };
 
 const DEFAULT_RAG_SETTINGS: RAGSettings = {
@@ -111,7 +114,16 @@ export const useAppStore = create<AppStore>()(
       updateModelSettings: (settings) =>
         set((state) => {
           const newSettings = { ...state.modelSettings, ...settings };
-          // Validate with Zod (optional, but good practice)
+
+          // Auto-set provider when model changes
+          if (settings.model) {
+            const modelDef = getModelById(settings.model);
+            if (modelDef) {
+              newSettings.provider = modelDef.provider;
+            }
+          }
+
+          // Validate with Zod
           const result = ModelSettingsSchema.safeParse(newSettings);
           if (result.success) {
             return { modelSettings: result.data };

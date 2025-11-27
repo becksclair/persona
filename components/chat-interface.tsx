@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Send, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 
@@ -18,14 +18,27 @@ export function ChatInterface() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
 
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      body: {
-        personalityId: activePersonalityId,
-        modelSettings,
-      },
-    }),
+  // Memoize the transport to avoid recreating on every render
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: {
+          personalityId: activePersonalityId,
+          modelSettings,
+        },
+      }),
+    [activePersonalityId, modelSettings]
+  );
+
+  const { messages, sendMessage, status, error } = useChat({
+    transport,
+    onError: (err) => {
+      console.error("Chat error:", err);
+    },
+    onFinish: (message) => {
+      console.log("Chat finished:", message);
+    },
   });
 
   const isLoading = status === "streaming" || status === "submitted";
@@ -35,6 +48,12 @@ export function ChatInterface() {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (error) {
+      console.error("Chat hook error:", error);
+    }
+  }, [error]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,9 +92,17 @@ export function ChatInterface() {
             </div>
           )}
 
-          {messages.map((m) => (
+          {messages.map((m) => {
+            // Get text content from parts
+            const textContent = m.parts
+              ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
+              .map((p) => p.text)
+              .join("") || "";
+
+            return (
             <div
               key={m.id}
+              data-testid={m.role === "user" ? "user-message" : "assistant-message"}
               className={cn(
                 "flex w-full gap-3",
                 m.role === "user" ? "justify-end" : "justify-start",
@@ -96,9 +123,7 @@ export function ChatInterface() {
                     : "bg-muted/50 border rounded-bl-none",
                 )}
               >
-                {m.parts.map((part, i) =>
-                  part.type === "text" ? <span key={i}>{part.text}</span> : null,
-                )}
+                {textContent || <span className="text-muted-foreground italic">Loading...</span>}
               </div>
 
               {m.role === "user" && (
@@ -108,7 +133,8 @@ export function ChatInterface() {
                 </Avatar>
               )}
             </div>
-          ))}
+          );
+          })}
 
           {isLoading && (
             <div className="flex w-full gap-3 justify-start">

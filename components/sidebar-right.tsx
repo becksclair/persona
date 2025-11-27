@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/lib/store";
+import { AVAILABLE_MODELS } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -79,22 +80,26 @@ export function SidebarRight() {
 
             {/* Model Selection as radio-like list */}
             <div className="space-y-1 rounded-lg border border-sidebar-border bg-sidebar-accent/30 p-1">
-              {[
-                { id: "gpt-3.5-turbo", name: "GPT-3.5" },
-                { id: "claude-2", name: "Claude 2" },
-                { id: "local-llama", name: "Local Llama" },
-              ].map((model) => (
+              {AVAILABLE_MODELS.map((model) => (
                 <button
                   key={model.id}
                   onClick={() => updateModelSettings({ model: model.id })}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
+                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
                     modelSettings.model === model.id
                       ? "bg-sidebar-accent text-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50",
                   )}
                 >
-                  {model.name}
+                  <span>{model.name}</span>
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded",
+                    model.provider === "lmstudio" 
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-blue-500/20 text-blue-400"
+                  )}>
+                    {model.provider === "lmstudio" ? "Local" : "Cloud"}
+                  </span>
                 </button>
               ))}
             </div>
