@@ -23,62 +23,83 @@
 
 ## Phase 1 – Solid Core UX (Chats, Characters, RAG Basics)
 
+### 1.0 User Auth & Identity
+
+- [ ] Implement basic email/password auth with sessions for a single-tenant dev user (no OAuth yet).
+- [ ] Introduce `user_id` on core entities (User, Character, Conversation, Message, MemoryItem, KnowledgeBaseFile) and scope all queries to the current user.
+- [ ] Seed a default dev user via migration for local development and tests.
+- [ ] Add per-user settings table to persist chat UX preferences (e.g. "Enter sends vs Ctrl+Enter").
+
 ### 1.1 Chats & Sessions
 
-- [ ] Choose and implement persistence stack (e.g. Postgres/SQLite + ORM) for conversations/messages.
-- [ ] Define DB schema for Conversation + Message matching engine spec (character_id, timestamps, context tags, etc.).
-- [ ] Implement server APIs for creating conversations, listing by user/character, renaming, archiving, deleting.
-- [ ] Wire left sidebar chat list to real conversations (title, last message preview, avatar).
-- [ ] Implement "New Chat" action that creates a new conversation with last-used character.
+- [ ] Add Docker Compose configuration for PostgreSQL 18.x with pgvector extension enabled (volumes, ports, basic auth).
+- [ ] Create separate development and test databases (e.g. `persona_dev`, `persona_test`) and configure connection URLs via environment variables.
+- [ ] Install and configure DrizzleORM for PostgreSQL (client, schema registration, migration runner).
+- [ ] Define DB schema for Conversation + Message using Drizzle models matching engine spec (user_id, character_id, timestamps, context tags, meta fields for tokens/provider/tool calls, etc.).
+- [ ] Implement REST API routes for conversations (create on first message send, list by user/character, rename, archive, delete) using Drizzle.
+- [ ] Wire left sidebar chat list to real conversations (title, last message preview, avatar), including an "Archived" collapsible section.
+- [ ] Implement "New Chat" action that selects the last-used character and persists the conversation when the first message is sent.
 - [ ] Implement "New Chat with This Character" action from character panel.
-- [ ] Implement archive semantics (hide from active views and RAG, but keep in Archived area).
-- [ ] Implement delete semantics (hard delete messages + embeddings, trigger memory recalibration hooks).
-- [ ] Add basic tests/e2e coverage for chat creation, switching, archive/delete.
+- [ ] Implement archive semantics (move to Archived section, hide from active views, and exclude from RAG).
+- [ ] Implement delete semantics (hard delete messages + embeddings; stub memory recalibration hook for later phases).
+- [ ] Add unit/integration tests (Vitest) and e2e coverage (Playwright) for chat creation, switching, archive/delete, and basic error cases.
 
 ### 1.2 Character Panel Integration
 
-- [ ] Replace mock personalities store with persisted Character entities aligned to engine `Character` model (persona_fields, behavior_rules, flags, etc.).
+- [ ] Replace mock personalities store with persisted Character entities aligned to engine `Character` model (persona_fields, behavior_rules, flags, etc.), using explicit text columns rather than JSON blobs.
+- [ ] Seed initial built-in characters (Sam, Therapist, Coding Guru, Creative Writer, Data Analyst, Custom) via one-time migration from markdown prompt template files stored under `config/characters`.
 - [ ] Load list of characters for the current user into right panel dropdown.
 - [ ] Add search/filter for characters in dropdown.
-- [ ] Add actions from panel: Edit (open builder), Duplicate, Archive, Delete, Export.
+- [ ] Add actions from panel: Edit (open builder), Duplicate, Archive, Delete, Export (using portable character export format v1).
 - [ ] Ensure character selection is per-chat and stored on Conversation.
-- [ ] When switching character in a chat, append a system message noting the change.
+- [ ] When switching character in a chat, render a UI-only separator noting the change (do not persist an extra system message in the conversation history).
 - [ ] Show name, avatar, tagline, and brief role description in the character panel header.
 
 ### 1.3 Model Settings (Per Character, Per Chat Overrides)
 
-- [ ] Extend model metadata to include context window + rough speed/cost indicators.
-- [ ] Persist per-character default model/profile, temperature, and basic sampling knobs (operational_profile).
-- [ ] Allow per-chat overrides of model/profile and remember last-used model per conversation.
-- [ ] Ensure /api/chat uses per-chat overrides falling back to per-character defaults.
+- [ ] Load authoritative model metadata from `config/models.json` (JSON config file including provider type enum and Cloud vs Local flags).
+- [ ] Define `config/models.json` schema (id, provider, metadata) and add a loader in `lib` to read it at runtime.
+- [ ] Extend model metadata to include context window + rough speed/cost indicators, deriving values from providers when simple enough.
+- [ ] Persist per-character default model/profile, temperature, and basic sampling knobs (`operational_profile`).
+- [ ] Allow per-chat overrides of model/profile and remember last-used model per conversation (overrides affect that conversation only).
+- [ ] Ensure existing conversations keep their current model if a character’s default model changes later.
+- [ ] Ensure `/api/chat` uses per-chat overrides falling back to per-character defaults.
 - [ ] Update right panel UI to display Cloud vs Local badges, context size, speed/cost hints.
-- [ ] Add tests to ensure correct model/provider is chosen for each chat turn.
+- [ ] Add tests to ensure correct model/provider is chosen for each chat turn (including local vs cloud selection).
 
 ### 1.4 RAG / Knowledge Base (Per Character)
 
-- [ ] Implement backend file upload endpoint + storage for knowledge base files (per user + character).
+- [ ] Implement backend file upload endpoint + storage for knowledge base files (per user + character), storing files on local filesystem with an abstraction that can later support S3-style storage.
+- [ ] Enforce a 10MB per-file size limit (no file type restrictions for now).
 - [ ] Store file metadata (name, type, size, status, tags).
-- [ ] Implement indexing pipeline: chunk files, embed, and store MemoryItems as per engine spec.
+- [ ] Implement indexing pipeline: chunk files, embed using a local embedding provider, and store `MemoryItem`s in PostgreSQL 18 pgvector storage as per engine spec.
 - [ ] Surface file status in UI (Indexing, Ready, Failed).
 - [ ] Implement actions: Remove (soft delete), Re-index, Pause (exclude from retrieval).
-- [ ] On each chat turn, retrieve top-K relevant MemoryItems for (user, character, conversation).
+- [ ] On each chat turn, retrieve a configurable top-K (default 8) relevant `MemoryItem`s for (user, character, conversation), excluding archived conversations.
 - [ ] Inject compact "Relevant past info" block into prompts.
-- [ ] Add minimal per-character memory viewer listing files and key stats.
+- [ ] Log which `MemoryItem`s were used for each chat turn to support future inspector tools.
+- [ ] Add minimal per-character memory viewer listing files and key stats, accessible from the advanced Settings dialog.
+- [ ] Centralize the RAG retrieval top-K default (8) in a small config so it can be tuned without code changes.
+- [ ] Refactor indexing pipeline in a later phase to run asynchronously via a background job queue instead of synchronously in the upload request.
 
 ### 1.5 Message Copy & Export
 
-- [ ] Add per-message "Copy" button for user + assistant messages.
+- [ ] Add per-message "Copy" button for user + assistant messages, visible on hover.
+- [ ] Implement `Ctrl+Shift+C` keyboard shortcut to copy the last assistant message.
 - [ ] Implement chat-level export menu (Markdown + JSON).
-- [ ] Ensure exports include character, model, and timestamps.
-- [ ] Basic tests for export formats.
+- [ ] Ensure exports include character, model, and UTC timestamps, and include system + tool messages as well as user/assistant messages.
+- [ ] Basic tests for export formats and copy interactions (including keyboard shortcut).
 
 ### 1.6 Basic UX Polish
 
-- [ ] Implement `Ctrl+Enter` / `Cmd+Enter` to send; `Enter` optional depending on setting.
+- [ ] Implement `Ctrl+Enter` / `Cmd+Enter` to send; `Enter` behavior is configurable via a setting.
+- [ ] Persist "Enter sends vs Ctrl+Enter" preference in the per-user settings table.
 - [ ] Implement `Esc` to blur input.
-- [ ] Ensure theme toggle fully wired (light/dark/system) and persisted.
-- [ ] Implement graceful error UI using structured errors from /api/chat with "Retry" action.
+- [ ] Ensure theme toggle fully wired (light/dark/system) and persisted using Next.js theme libraries.
+- [ ] Implement graceful error UI using structured errors from `/api/chat` with "Retry" action that re-sends the last user message.
+- [ ] Standardize `/api/chat` error payload shape (e.g. `{ code, message, retryable }`) and log failures for debugging.
 - [ ] Add small loading/streaming indicators in chat header or input area.
+- [ ] Add a Settings dialog/page for advanced configuration (keyboard preferences, RAG on/off, entry point to per-character memory viewer and advanced character configuration).
 
 ---
 
@@ -112,10 +133,11 @@
 
 ### 2.4 Import / Export & Portability
 
-- [ ] Define portable character export format (persona_fields, behavior_rules, custom instructions, model profile).
+- [ ] Define `PortableCharacterV1` export format (persona_fields, behavior_rules, custom instructions, operational/model profile, flags) aligned with engine spec.
 - [ ] Implement "Export character" to file.
 - [ ] Implement "Import character" from file with validation and conflict handling.
 - [ ] Document how to combine character exports with vector DB backups for portability.
+- [ ] Store built-in character templates as markdown files under `config/characters` and ensure seeding/import flows use that location.
 
 ### 2.5 Versioning & Checkpoints
 
@@ -210,9 +232,9 @@
 
 ## Phase 6 – Multi-User, Auth, and Tenancy Prep
 
-- [ ] Implement basic auth (single-tenant dev mode first, then optional OAuth).
-- [ ] Introduce `user_id` scoping for all entities (chats, characters, RAG, tools, usage stats).
-- [ ] Ensure no cross-user data leakage.
+- [ ] Extend basic email/password auth from Phase 1 to multi-user mode suitable for hosted deployment.
+- [ ] Add optional OAuth providers (GitHub/Google, etc.) for hosted mode.
+- [ ] Ensure all entities (chats, characters, RAG, tools, usage stats) are correctly scoped by `user_id` and enforce no cross-user data leakage.
 - [ ] Add internal usage tracking per user (tokens by provider, local vs cloud).
 - [ ] Add hooks for future pricing tiers and metering (no UI yet).
 

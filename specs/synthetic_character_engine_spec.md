@@ -16,7 +16,8 @@ Stack baseline (conceptual, not binding):
 - Frontend: Next.js + Vercel AI SDK + React.
 - Providers: OpenAI/Anthropic/etc. via HTTP; LM Studio/local via custom adapter.
 - Backend: API routes / serverless functions (or a small backend service) for chat routing, RAG, and background jobs.
-- Storage: Postgres (or similar) + vector store (Qdrant / pgvector / whatever is easiest early).
+- Storage: PostgreSQL 18.x with pgvector in the same cluster for vector embeddings.
+- File storage: local filesystem in early phases, behind an abstraction that can later point to S3-style storage.
 
 ---
 
@@ -58,7 +59,7 @@ Core fields:
 - `Conversation`:
   - `id`
   - `character_id`
-  - `user_id` (optional for multi‑user product)
+  - `user_id` (required; single dev user in early phases, multi‑user later)
   - timestamps: created/updated
   - `settings` (per‑thread overrides: language, mode, etc.)
 
@@ -179,10 +180,30 @@ These scores **modulate behavior**, but do not change core ethics.
 Used for dev experiments and manual rollback; user‑facing flows can be much more conservative.
 
 
-### 1.7. Subsystems
+### 1.7. Portable Character Export Format (`PortableCharacterV1`)
+
+- JSON structure used for:
+  - Seeding built-in characters from files in the repo.
+  - Exporting/importing characters between machines and future hosted mode.
+- Fields (mapping 1:1 onto `Character` fields):
+  - `schema_version` (e.g. `"portable-character-v1"`).
+  - `name`, `avatar`, `system_role`.
+  - `persona_fields` (description, personality, background, life_history, current_context).
+  - `behavior_rules`.
+  - `custom_instructions_local`.
+  - `operational_profile` (preferred models, context limits, cost/latency prefs).
+  - `flags` (evolve_enabled, nsfw_enabled).
+  - optional `tags` / `categories`.
+- On import:
+  - Bound to a specific `user_id`.
+  - May get a new internal `id` while remaining round‑trippable.
+
+
+### 1.8. Subsystems
 
 - **Chat Orchestrator:** builds prompts, calls models, handles streaming.
 - **Provider Adapters:** unify OpenAI, Anthropic, LM Studio, etc.
+- **Tool System:** defines callable tools using the OpenAI tools/functions JSON schema for arguments and result types; orchestrator exposes these to models and executes Python/JS/HTTP/MCP calls.
 - **Subconscious Agent (`executive_subconscious_think`):** async jobs that read logs and maintain inner monologue + candidate memories.
 - **Dream/Consolidation Jobs:** periodic passes that promote/demote cognitive nodes.
 - **Graph Inspector & Insight Mode:** UI and APIs to inspect/edit memory graph and relationship states.
@@ -197,7 +218,7 @@ Goal: **Usable chat app** with structured character sheets, multi‑provider rou
 
 Scope:
 
-- Auth (optional for now; can be simple “single‑user dev mode”).
+- Auth: simple email/password plus session for a single dev user, with a real `user_id` column in the DB from day one (multi‑user later).
 - Character CRUD with the structured persona fields:
   - description
   - personality
@@ -235,13 +256,16 @@ Scope:
 - Log all messages to DB.
 - RAG pipeline:
   - Chunk messages (and files, once uploads land).
-  - Embed chunks and store as `MemoryItem`s.
+  - Embed chunks using the configured local embedding provider and store as `MemoryItem`s in pgvector.
 - Retrieval:
   - For each turn, retrieve top‑K relevant items for this (user, character, conversation).
   - Inject them into the prompt as a compact “Relevant past info” section.
 - Basic policies:
   - Respect `visibility_policy` (don’t use `exclude_from_rag`).
   - Don’t over‑stuff; focus on short, relevant snippets.
+  - Exclude archived conversations from retrieval by default so they don’t influence new turns.
+- Instrumentation:
+  - For each assistant message, record the IDs of `MemoryItem`s actually used (e.g. in message `meta`) to support future Memory Inspector tooling.
 
 UI additions:
 

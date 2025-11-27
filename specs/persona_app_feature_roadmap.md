@@ -2,15 +2,27 @@
 
 This spec extends the engine spec and assumes the current UI layout (sidebar chats, central chat pane, right "Character & Memory" panel). It focuses on *product‑level* behavior, UX, and runtime features, updated with your decisions.
 
+Implementation stack (current decision):
+
+- Backend data store: PostgreSQL 18.x with pgvector in the same cluster, run via Docker Compose for local development and tests (separate dev/test databases).
+- ORM: DrizzleORM for PostgreSQL.
+- Testing: dedicated PostgreSQL test database used by automated tests (unit + e2e).
+
 ---
 
 ## Phase 1 – Solid Core UX (Chats, Characters, RAG Basics)
 
 Goal: Turn the prototype into a stable, daily‑usable core for a single power user.
 
+### 1.0. Auth & Identity (Dev Mode)
+
+- Email/password auth for a single dev user, stored in Postgres with session-based sign-in.
+- `user_id` is required on all user-owned entities (chats, characters, knowledge base, tools config, usage stats).
+- Seed a default dev user and per-user settings row for local use (e.g. keyboard preferences like “Enter sends vs Ctrl+Enter”).
+
 ### 1.1. Chats & Sessions
 
-- Persist conversations per user, per character.
+- Persist conversations per user, per character (each conversation has a `character_id` that can be changed later from the UI).
 - Sidebar:
   - Each chat shows title, last message preview, and a small character avatar/initial.
   - Support rename, archive, delete.
@@ -18,8 +30,8 @@ Goal: Turn the prototype into a stable, daily‑usable core for a single power u
   - "New Chat" (with last‑used character).
   - "New Chat with This Character" from character panel.
 - Archive vs delete semantics:
-  - **Archive**: remove from active views and from normal recall, but keep in an Archived area; these messages are excluded from RAG and cognitive consolidation.
-  - **Delete**: hard delete from storage and embeddings; triggers subconscious recalibration jobs to remove traces from memory layers.
+  - **Archive**: remove from active views and from normal recall, but keep in an Archived collapsible area in the sidebar; these messages are excluded from RAG and cognitive consolidation.
+  - **Delete**: hard delete from storage and embeddings; later phases add subconscious recalibration jobs to remove traces from higher memory layers.
 
 ### 1.2. Character Panel Integration
 
@@ -27,7 +39,7 @@ Goal: Turn the prototype into a stable, daily‑usable core for a single power u
   - List of all constructs owned by the current user.
   - Search/filter.
   - Actions: Edit, Duplicate, Archive, Delete, Export.
-- Character selection is per chat; switching the character in a chat writes a system message noting the change.
+- Character selection is per chat; switching the character in a chat updates the conversation’s `character_id` and shows a visual separator in the UI noting the change (no extra message is stored).
 - Character panel shows:
   - Name, avatar, tagline.
   - Brief description of role with the user.
@@ -38,6 +50,7 @@ Goal: Turn the prototype into a stable, daily‑usable core for a single power u
   - Cloud vs Local badges.
   - Approx context (e.g. 8K, 32K).
   - Relative speed/cost indicators.
+  - Model catalog loaded from `config/models.json` (per-model id, provider, and metadata).
 - Per character:
   - Default model/profile selection (e.g. "Fast local", "Smart cloud").
   - Default temperature and other basic sampling knobs.
@@ -48,29 +61,40 @@ Goal: Turn the prototype into a stable, daily‑usable core for a single power u
 
 ### 1.4. RAG / Knowledge Base (Per Character)
 
-- Right panel: "Memory (RAG)" section.
+- Right panel: compact "Memory (RAG)" status plus an entry point into the advanced Settings / Memory viewer.
 - For each character:
-  - Upload documents (PDF, TXT, DOCX, code bundles from repomix once integrated).
+  - Upload documents (PDF, TXT, DOCX, code bundles from repomix once integrated), stored on the local filesystem with a future path to S3-style storage.
+  - Enforce a 10MB per-file size limit (no strict file type restrictions initially).
   - Show file list with name, type, size, status (Indexing, Ready, Failed).
   - Actions: Remove, Re‑index, Pause (exclude from retrieval without deletion).
 - Simple retrieval behavior:
-  - For each turn, fetch top‑K relevant chunks tied to this user+character.
-  - Inject them into the prompt in a compact way.
+  - For each turn, fetch a configurable top‑K (default 8) of relevant chunks tied to this user+character, excluding archived conversations.
+  - Inject them into the prompt in a compact way as a "Relevant past info" block.
+  - Log which memory items were used for each assistant reply (for later Memory Inspector tooling).
+  - Store the default top‑K (8) in a small RAG config so it can be tuned without code changes or exposed in advanced settings later.
 
 ### 1.5. Message Copy & Export (Day‑One Requirement)
 
-- Every assistant and user message has a "Copy" button.
+- Every assistant and user message has a "Copy" button, shown on hover.
+- Keyboard shortcut: `Ctrl+Shift+C` copies the last assistant message.
 - Chat‑level export menu:
-  - Export conversation as Markdown and/or JSON.
+  - Export conversation as Markdown and/or JSON including system and tool messages as well as user/assistant messages.
+  - All timestamps are exported in UTC and include character + model metadata.
   - Later phases can add "Export summary" and richer formats.
 
 ### 1.6. Basic UX Polish
 
 - Keyboard shortcuts:
   - `Ctrl+Enter` / `Cmd+Enter` to send.
+  - `Enter` vs `Ctrl+Enter` behavior is configurable per user and stored in settings.
   - `Esc` to blur input.
-- Light/Dark/System theme toggle.
-- Graceful error UI when a model call fails; message can be retried.
+- Light/Dark/System theme toggle using the Next.js theme libraries; default to the system theme when no preference is stored.
+- Graceful error UI when a model call fails; message can be retried by re-sending the last user message.
+- Standardized `/api/chat` error payload shape (e.g. `{ code, message, retryable }`) for consistent handling.
+- Global Settings dialog/page for advanced configuration:
+  - Keyboard preferences.
+  - RAG on/off per user/character (simple toggle in early phases).
+  - Entry point to the per-character memory viewer and advanced character configuration.
 
 ---
 
@@ -109,10 +133,13 @@ Goal: Let you create, tune, version, and move constructs between machines.
 
 ### 2.4. Import / Export & Portability
 
-- Export format that includes:
+- Portable character export format (`PortableCharacterV1`) that includes:
   - Persona fields and behavior rules.
   - Custom instructions.
-  - Model profile preferences.
+  - Model profile preferences / operational profile.
+- Same format is used for:
+  - Seeding built-in characters from markdown templates stored under `config/characters`.
+  - Import/export flows between machines and future hosted mode.
 - When combined with a copy of the user’s vector database, constructs are **portable** between machines.
 - No public gallery or share‑link in this phase; sharing is manual via files.
 
@@ -182,6 +209,7 @@ Goal: Bring in local voice and tool use so the app becomes your main AI cockpit.
 - Per character:
   - Tool permissions (which tools they can use).
   - Defaults (e.g. coding partner can run code, emotional support character cannot).
+- Tool definitions follow the OpenAI tools/functions JSON schema for arguments and result types where supported by providers.
 - UI hints when a tool is used (e.g. small label under a message).
 
 ### 4.4. Code Context via Repomix
@@ -228,8 +256,9 @@ Goal: Prepare for eventual hosted/product mode with clear data isolation and bil
 
 ### 6.1. Authentication
 
-- User accounts with email/password or OAuth (GitHub/Google, etc.).
-- Single‑tenant mode for dev (no auth or simple local user) and multi‑tenant mode for hosted.
+- Extend the basic email/password auth from Phase 1 to multi-user mode.
+- Optional OAuth providers (GitHub/Google, etc.) for hosted mode.
+- Distinct single‑tenant dev mode vs multi‑tenant hosted mode, both using the same `user_id`-scoped data model.
 
 ### 6.2. Per‑User Isolation
 
