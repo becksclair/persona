@@ -32,10 +32,10 @@
 
 ### 1.1 Chats & Sessions
 
-- [ ] Add Docker Compose configuration for PostgreSQL 18.x with pgvector extension enabled (volumes, ports, basic auth).
-- [ ] Create separate development and test databases (e.g. `persona_dev`, `persona_test`) and configure connection URLs via environment variables.
-- [ ] Install and configure DrizzleORM for PostgreSQL (client, schema registration, migration runner).
-- [ ] Define DB schema for Conversation + Message using Drizzle models matching engine spec (user_id, character_id, timestamps, context tags, meta fields for tokens/provider/tool calls, etc.).
+- [x] Add Docker Compose configuration for PostgreSQL 18.x with pgvector extension enabled (volumes, ports, basic auth).
+- [x] Create separate development and test databases (e.g. `persona_dev`, `persona_test`) and configure connection URLs via environment variables.
+- [x] Install and configure DrizzleORM for PostgreSQL (client, schema registration, migration runner).
+- [x] Define DB schema for Conversation + Message using Drizzle models matching engine spec (user_id, character_id, timestamps, context tags, meta fields for tokens/provider/tool calls, etc.).
 - [ ] Implement REST API routes for conversations (create on first message send, list by user/character, rename, archive, delete) using Drizzle.
 - [ ] Wire left sidebar chat list to real conversations (title, last message preview, avatar), including an "Archived" collapsible section.
 - [ ] Implement "New Chat" action that selects the last-used character and persists the conversation when the first message is sent.
