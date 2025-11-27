@@ -185,9 +185,11 @@ export function SidebarRight() {
                     <MessageSquarePlus className="h-4 w-4 mr-2" />
                     New Chat
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Character
+                  <DropdownMenuItem asChild>
+                    <a href={`/characters/${activeCharacter.id}`}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit Character
+                    </a>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => void handleDuplicate(activeCharacter.id)}>
                     <Copy className="h-4 w-4 mr-2" />

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,7 @@ import {
   Trash2,
   ChevronRight,
   Loader2,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
@@ -182,6 +185,8 @@ export function SidebarLeft() {
 
   const { activeConversationId, setActiveConversation, startNewChat, isPendingNewChat } =
     useChatStore();
+  const pathname = usePathname();
+  const isOnCharactersPage = pathname?.startsWith("/characters");
 
   // Filter conversations by search query
   const activeConvs = useMemo(() => {
@@ -272,8 +277,8 @@ export function SidebarLeft() {
         </div>
       </div>
 
-      {/* New Chat Button */}
-      <div className="px-4 pb-3">
+      {/* Action Buttons */}
+      <div className="px-4 pb-3 space-y-2">
         <Button
           onClick={handleNewChat}
           className={cn(
@@ -284,6 +289,17 @@ export function SidebarLeft() {
         >
           <Plus className="h-4 w-4" />
           New Chat
+        </Button>
+        <Button
+          asChild
+          variant={isOnCharactersPage ? "secondary" : "outline"}
+          className="w-full justify-center gap-2"
+          size="sm"
+        >
+          <Link href="/characters">
+            <Users className="h-4 w-4" />
+            Characters
+          </Link>
         </Button>
       </div>
 

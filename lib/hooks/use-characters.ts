@@ -19,6 +19,8 @@ export interface Character {
   boundaries: string | null;
   roleRules: string | null;
   customInstructionsLocal: string | null;
+  tags: string[] | null;
+  archetype: string | null;
   defaultModelId: string | null;
   defaultTemperature: number | null;
   maxContextWindow: number | null;

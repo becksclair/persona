@@ -22,6 +22,7 @@ export function AppShell() {
     return <LoginForm />;
   }
 
+  // Chat view with sidebars
   return (
     <main className="flex h-screen w-full overflow-hidden bg-background text-foreground">
       <SidebarLeft />

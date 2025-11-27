@@ -107,22 +107,22 @@
 
 ### 2.1 Character Library
 
-- [ ] Add dedicated "Characters" view/route.
-- [ ] Render cards for each character with avatar, name, tagline, and tags.
-- [ ] Implement filters and search (e.g. Friend, Work, NSFW).
-- [ ] Wire actions per card: Open in builder, Duplicate, Archive/Delete, Export.
+- [x] Add dedicated "Characters" view/route.
+- [x] Render cards for each character with avatar, name, tagline, and tags.
+- [x] Implement filters and search (e.g. Friend, Work, NSFW).
+- [x] Wire actions per card: Open in builder, Duplicate, Archive/Delete, Export.
 
 ### 2.2 Character Builder
 
-- [ ] Implement multi-step character builder UI:
-  - [ ] Step 1: Basics (name, avatar, tagline, archetype).
-  - [ ] Step 2: Personality & behavior (tone, traits, boundaries, how to treat you).
-  - [ ] Step 3: Background & life history.
-  - [ ] Step 4: Current life details / present situation.
-  - [ ] Step 5: Advanced (custom instructions, NSFW toggle, model defaults, tool permissions).
-- [ ] Add per-field "Enhance with AI" / "Fill with AI" buttons calling a model.
-- [ ] Implement side-by-side preview with apply/cancel.
-- [ ] Persist structured persona_fields and behavior_rules to DB.
+- [x] Implement multi-step character builder UI:
+  - [x] Step 1: Basics (name, avatar, tagline, archetype).
+  - [x] Step 2: Personality & behavior (tone, traits, boundaries, how to treat you).
+  - [x] Step 3: Background & life history.
+  - [x] Step 4: Current life details / present situation.
+  - [x] Step 5: Advanced (custom instructions, NSFW toggle, model defaults, tool permissions).
+- [x] Add per-field "Enhance with AI" / "Fill with AI" buttons calling a model.
+- [x] Implement side-by-side preview with apply/cancel.
+- [x] Persist structured persona_fields and behavior_rules to DB.
 
 ### 2.3 Archetypes & Templates
 

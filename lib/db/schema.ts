@@ -73,6 +73,10 @@ export const characters = pgTable("characters", {
   roleRules: text("role_rules"),
   // Custom instructions
   customInstructionsLocal: text("custom_instructions_local"),
+  // Tags for filtering (Friend, Work, NSFW, etc.)
+  tags: jsonb("tags").$type<string[]>(),
+  // Archetype (Coding Partner, Emotional Anchor, etc.)
+  archetype: text("archetype"),
   // Operational profile
   defaultModelId: text("default_model_id"),
   defaultTemperature: real("default_temperature").default(0.7),

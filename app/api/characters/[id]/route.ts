@@ -76,6 +76,8 @@ export async function PATCH(req: Request, context: RouteContext) {
       "boundaries",
       "roleRules",
       "customInstructionsLocal",
+      "tags",
+      "archetype",
       "defaultModelId",
       "defaultTemperature",
       "maxContextWindow",
