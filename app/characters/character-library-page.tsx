@@ -29,7 +29,19 @@ import {
   Heart,
   Sparkles,
   Filter,
+  FileText,
+  Loader2,
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { useTemplates } from "@/lib/hooks/use-templates";
 import { cn } from "@/lib/utils";
 import { useCharacters, type Character } from "@/lib/hooks/use-characters";
 
@@ -61,6 +73,7 @@ interface CharacterCardProps {
   onArchive: () => void;
   onDelete: () => void;
   onExport: () => void;
+  onSaveAsTemplate: () => void;
 }
 
 function CharacterCard({
@@ -69,6 +82,7 @@ function CharacterCard({
   onArchive,
   onDelete,
   onExport,
+  onSaveAsTemplate,
 }: CharacterCardProps) {
   const tags = character.tags ?? [];
 
@@ -113,6 +127,10 @@ function CharacterCard({
             <DropdownMenuItem onClick={onExport}>
               <Download className="h-4 w-4 mr-2" />
               Export
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onSaveAsTemplate}>
+              <FileText className="h-4 w-4 mr-2" />
+              Save as Template
             </DropdownMenuItem>
             {!character.isBuiltIn && (
               <>
@@ -173,12 +191,23 @@ function CharacterCard({
   );
 }
 
+// Common emoji icons for templates
+const TEMPLATE_ICONS = ["📝", "💡", "⭐", "🎯", "🔥", "💎", "🌟", "✨", "🎨", "🧠", "💼", "❤️"] as const;
+
 export function CharacterLibraryPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter } =
     useCharacters({ includeArchived: false });
+
+  // Template dialog state
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateCharacter, setTemplateCharacter] = useState<Character | null>(null);
+  const [templateName, setTemplateName] = useState("");
+  const [templateIcon, setTemplateIcon] = useState("📝");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const { createTemplateFromCharacter } = useTemplates();
 
   // Filter characters by search and tag
   const filteredCharacters = useMemo(() => {
@@ -210,6 +239,27 @@ export function CharacterLibraryPage() {
   const handleDuplicate = async (id: string) => {
     const duplicate = await duplicateCharacter(id);
     router.push(`/characters/${duplicate.id}`);
+  };
+
+  const handleSaveAsTemplate = (character: Character) => {
+    setTemplateCharacter(character);
+    setTemplateName(`${character.name} Template`);
+    setTemplateIcon("📝");
+    setTemplateDialogOpen(true);
+  };
+
+  const handleConfirmSaveTemplate = async () => {
+    if (!templateCharacter || !templateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      await createTemplateFromCharacter(templateCharacter.id, templateName.trim(), templateIcon);
+      setTemplateDialogOpen(false);
+      setTemplateCharacter(null);
+    } catch (error) {
+      console.error("Failed to save template:", error);
+    } finally {
+      setSavingTemplate(false);
+    }
   };
 
   const handleExport = (character: Character) => {
@@ -344,12 +394,84 @@ export function CharacterLibraryPage() {
                   onArchive={() => void archiveCharacter(character.id)}
                   onDelete={() => void deleteCharacter(character.id)}
                   onExport={() => handleExport(character)}
+                  onSaveAsTemplate={() => handleSaveAsTemplate(character)}
                 />
               ))}
             </div>
           )}
         </div>
       </ScrollArea>
+
+      {/* Save as Template Dialog */}
+      <Sheet open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <SheetContent side="right" className="w-[400px] sm:w-[450px]">
+          <SheetHeader>
+            <SheetTitle>Save as Template</SheetTitle>
+            <SheetDescription>
+              Create a reusable template from {templateCharacter?.name}. You can use this template to
+              quickly create new characters with the same settings.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-6 space-y-6">
+            {/* Template Name */}
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="My Template"
+              />
+            </div>
+
+            {/* Template Icon */}
+            <div className="space-y-2">
+              <Label>Icon</Label>
+              <div className="flex flex-wrap gap-2">
+                {TEMPLATE_ICONS.map((icon) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => setTemplateIcon(icon)}
+                    className={cn(
+                      "w-10 h-10 rounded-lg border text-xl flex items-center justify-center transition-all",
+                      templateIcon === icon
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    {icon}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter>
+            <Button
+              variant="outline"
+              onClick={() => setTemplateDialogOpen(false)}
+              disabled={savingTemplate}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleConfirmSaveTemplate()}
+              disabled={savingTemplate || !templateName.trim()}
+            >
+              {savingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Template"
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

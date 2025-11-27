@@ -6,6 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +31,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCharacters, type Character } from "@/lib/hooks/use-characters";
+import { useTemplates, type CharacterTemplate } from "@/lib/hooks/use-templates";
+import { TEMPLATE_ICONS } from "@/lib/templates";
 
 import { StepBasics } from "./step-basics";
 import { StepPersonality } from "./step-personality";
@@ -48,7 +60,36 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
   const [enhancingField, setEnhancingField] = useState<string | null>(null);
 
   const { characters, createCharacter, updateCharacter } = useCharacters();
+  const { templates, deleteTemplate, updateTemplate } = useTemplates();
   const isEditing = !!characterId;
+
+  // Template editing state
+  const [editingTemplate, setEditingTemplate] = useState<CharacterTemplate | null>(null);
+  const [editTemplateName, setEditTemplateName] = useState("");
+  const [editTemplateIcon, setEditTemplateIcon] = useState("📝");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const handleEditTemplate = (template: CharacterTemplate) => {
+    setEditingTemplate(template);
+    setEditTemplateName(template.name);
+    setEditTemplateIcon(template.icon || "📝");
+  };
+
+  const handleSaveTemplateEdit = async () => {
+    if (!editingTemplate || !editTemplateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      await updateTemplate(editingTemplate.id, {
+        name: editTemplateName.trim(),
+        icon: editTemplateIcon,
+      });
+      setEditingTemplate(null);
+    } catch (error) {
+      console.error("Failed to update template:", error);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
 
   // Initialize form with react-hook-form
   const methods = useForm<CharacterFormData>({
@@ -254,6 +295,9 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
                 <StepBasics
                   onEnhance={handleEnhance}
                   enhancingField={enhancingField}
+                  templates={templates}
+                  onDeleteTemplate={(id) => void deleteTemplate(id)}
+                  onEditTemplate={handleEditTemplate}
                 />
               )}
               {currentStep === 2 && (
@@ -318,6 +362,76 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
         {/* Preview Panel */}
         <PreviewPanel />
       </form>
+
+      {/* Template Edit Sheet */}
+      <Sheet open={!!editingTemplate} onOpenChange={(open) => !open && setEditingTemplate(null)}>
+        <SheetContent side="right" className="w-[400px] sm:w-[450px]">
+          <SheetHeader>
+            <SheetTitle>Edit Template</SheetTitle>
+            <SheetDescription>
+              Update the name and icon for this template.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-6 space-y-6">
+            {/* Template Name */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-template-name">Template Name</Label>
+              <Input
+                id="edit-template-name"
+                value={editTemplateName}
+                onChange={(e) => setEditTemplateName(e.target.value)}
+                placeholder="My Template"
+              />
+            </div>
+
+            {/* Template Icon */}
+            <div className="space-y-2">
+              <Label>Icon</Label>
+              <div className="flex flex-wrap gap-2">
+                {TEMPLATE_ICONS.map((icon) => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => setEditTemplateIcon(icon)}
+                    className={cn(
+                      "w-10 h-10 rounded-lg border text-xl flex items-center justify-center transition-all",
+                      editTemplateIcon === icon
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    {icon}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingTemplate(null)}
+              disabled={savingTemplate}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleSaveTemplateEdit()}
+              disabled={savingTemplate || !editTemplateName.trim()}
+            >
+              {savingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </FormProvider>
   );
 }

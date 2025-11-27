@@ -47,4 +47,8 @@ export const Events = {
   CHARACTER_CREATED: "character:created",
   CHARACTER_UPDATED: "character:updated",
   CHARACTER_DELETED: "character:deleted",
+  TEMPLATES_CHANGED: "templates:changed",
+  TEMPLATE_CREATED: "template:created",
+  TEMPLATE_UPDATED: "template:updated",
+  TEMPLATE_DELETED: "template:deleted",
 } as const;

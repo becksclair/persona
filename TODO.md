@@ -126,10 +126,10 @@
 
 ### 2.3 Archetypes & Templates
 
-- [ ] Define built-in archetypes (Coding Partner, Daily Check-In, Emotional Anchor, Writing Coach, NSFW Lover, etc.).
-- [ ] Implement archetype selector that pre-fills builder fields.
-- [ ] Allow saving any character as a reusable template.
-- [ ] Allow creating new characters from templates.
+- [x] Define built-in archetypes (Coding Partner, Daily Check-In, Emotional Anchor, Writing Coach, NSFW Lover, etc.).
+- [x] Implement archetype selector that pre-fills builder fields.
+- [x] Allow saving any character as a reusable template.
+- [x] Allow creating new characters from templates.
 
 ### 2.4 Import / Export & Portability
 

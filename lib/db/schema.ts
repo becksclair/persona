@@ -92,6 +92,43 @@ export const characters = pgTable("characters", {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Character Templates (user-saved reusable templates)
+// ─────────────────────────────────────────────────────────────
+export const characterTemplates = pgTable(
+  "character_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    icon: text("icon").default("📝"),
+    description: text("description"),
+    // Template data (same fields as character)
+    tagline: text("tagline"),
+    personality: text("personality"),
+    toneStyle: text("tone_style"),
+    boundaries: text("boundaries"),
+    roleRules: text("role_rules"),
+    background: text("background"),
+    lifeHistory: text("life_history"),
+    currentContext: text("current_context"),
+    customInstructionsLocal: text("custom_instructions_local"),
+    tags: jsonb("tags").$type<string[]>(),
+    // Operational defaults
+    defaultModelId: text("default_model_id"),
+    defaultTemperature: real("default_temperature").default(0.7),
+    // Flags
+    nsfwEnabled: boolean("nsfw_enabled").default(false).notNull(),
+    evolveEnabled: boolean("evolve_enabled").default(false).notNull(),
+    // Timestamps
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("character_templates_user_id_idx").on(table.userId),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────
 // Conversations
 // ─────────────────────────────────────────────────────────────
 export const conversations = pgTable(
@@ -208,6 +245,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   sessions: many(sessions),
   characters: many(characters),
+  characterTemplates: many(characterTemplates),
   conversations: many(conversations),
   knowledgeBaseFiles: many(knowledgeBaseFiles),
 }));
@@ -255,5 +293,12 @@ export const knowledgeBaseFilesRelations = relations(knowledgeBaseFiles, ({ one 
   character: one(characters, {
     fields: [knowledgeBaseFiles.characterId],
     references: [characters.id],
+  }),
+}));
+
+export const characterTemplatesRelations = relations(characterTemplates, ({ one }) => ({
+  user: one(users, {
+    fields: [characterTemplates.userId],
+    references: [users.id],
   }),
 }));
