@@ -1,36 +1,27 @@
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { streamText, convertToModelMessages } from "ai";
+import { db } from "@/lib/db";
+import { characters } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { buildSystemPrompt, FALLBACK_PROMPTS } from "@/lib/prompts";
 import type { ModelSettings } from "@/lib/types";
 
 /**
  * Chat API Route - Handles both OpenAI and LM Studio providers
  *
+ * System prompts are now built server-side from Character entities in the database.
+ * This ensures consistency across clients and prevents prompt manipulation.
+ *
  * Smoke test (LM Studio):
  * ```
  * curl -X POST http://localhost:3000/api/chat \
  *   -H "Content-Type: application/json" \
- *   -d '{"messages":[{"role":"user","parts":[{"type":"text","text":"hi"}]}],"personalityId":"sam","modelSettings":{"model":"qwen/qwen3-8b","provider":"lmstudio"}}'
+ *   -d '{"messages":[{"role":"user","parts":[{"type":"text","text":"hi"}]}],"characterId":"sam","modelSettings":{"model":"qwen/qwen3-8b","provider":"lmstudio"}}'
  * ```
- *
- * Note: AI SDK v5 sends UIMessage[] from useChat. Must convert to ModelMessage[] via convertToModelMessages().
  */
 
 // Allow streaming responses up to 60 seconds for local models
 export const maxDuration = 60;
-
-// Personality system prompts
-const PERSONALITY_PROMPTS: Record<string, string> = {
-  sam: "You are Sam, a friendly and supportive AI companion. You're warm, encouraging, and great at brainstorming. Use casual language and occasional emojis.",
-  therapist:
-    "You are a compassionate therapist AI. Listen actively, ask thoughtful questions, and help users explore their feelings without judgment. Use techniques from CBT and mindfulness.",
-  "coding-guru":
-    "You are a senior software engineer with expertise across multiple languages and frameworks. Provide clear code examples, explain concepts thoroughly, and follow best practices.",
-  "creative-writer":
-    "You are a creative writer with a flair for storytelling. Help users craft compelling narratives, develop characters, and find their unique voice. Be imaginative and inspiring.",
-  "data-analyst":
-    "You are a data analyst expert. Help users understand data, create visualizations, and derive actionable insights. Be precise, methodical, and data-driven.",
-  custom: "You are a helpful AI assistant. Respond thoughtfully and helpfully.",
-};
 
 // Create LM Studio provider (OpenAI-compatible API)
 function createLmStudioProvider(baseUrl: string) {
@@ -49,7 +40,6 @@ function getModelProvider(modelSettings: ModelSettings) {
     const lmStudio = createLmStudioProvider(
       modelSettings?.lmStudioBaseUrl || "http://localhost:1234/v1"
     );
-    // For LM Studio, use a generic model identifier or the model name
     return lmStudio(modelId);
   }
 
@@ -58,26 +48,69 @@ function getModelProvider(modelSettings: ModelSettings) {
 }
 
 export async function POST(req: Request) {
-  let body: { messages?: unknown; personalityId?: string; modelSettings?: ModelSettings };
+  let body: {
+    messages?: unknown;
+    characterId?: string;
+    personalityId?: string; // Legacy support
+    modelSettings?: ModelSettings;
+  };
 
   try {
     body = await req.json();
   } catch {
-    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+    return Response.json(
+      { code: "INVALID_JSON", message: "Invalid JSON body", retryable: false },
+      { status: 400 }
+    );
   }
 
-  const { messages, personalityId, modelSettings } = body;
+  const { messages, modelSettings } = body;
+  // Support both characterId and legacy personalityId
+  const characterId = body.characterId ?? body.personalityId;
 
   if (!messages || !Array.isArray(messages)) {
-    return Response.json({ error: "messages array required" }, { status: 400 });
+    return Response.json(
+      { code: "MISSING_MESSAGES", message: "messages array required", retryable: false },
+      { status: 400 }
+    );
   }
 
-  const systemPrompt = PERSONALITY_PROMPTS[personalityId ?? ""] || PERSONALITY_PROMPTS.sam;
+  // Build system prompt from character (server-side)
+  let systemPrompt: string;
+  try {
+    if (characterId) {
+      const character = await db.query.characters.findFirst({
+        where: eq(characters.id, characterId),
+      });
+
+      if (character) {
+        systemPrompt = buildSystemPrompt(character);
+      } else {
+        // Fallback to legacy prompts for backward compatibility
+        systemPrompt = FALLBACK_PROMPTS[characterId] ?? FALLBACK_PROMPTS.sam;
+      }
+    } else {
+      systemPrompt = FALLBACK_PROMPTS.sam;
+    }
+  } catch (dbError) {
+    console.warn("[chat] Failed to fetch character, using fallback:", dbError);
+    systemPrompt = FALLBACK_PROMPTS[characterId ?? "sam"] ?? FALLBACK_PROMPTS.sam;
+  }
+
   const provider = modelSettings?.provider || "openai";
   const modelId = modelSettings?.model || "gpt-4.1-mini";
 
   try {
-    const model = getModelProvider(modelSettings ?? { model: modelId, provider, temperature: 0.7, maxOutputTokens: 4096, streamResponse: true, lmStudioBaseUrl: "http://localhost:1234/v1" });
+    const model = getModelProvider(
+      modelSettings ?? {
+        model: modelId,
+        provider,
+        temperature: 0.7,
+        maxOutputTokens: 4096,
+        streamResponse: true,
+        lmStudioBaseUrl: "http://localhost:1234/v1",
+      }
+    );
 
     // AI SDK v5: Convert UIMessage[] to ModelMessage[] for streamText
     const modelMessages = convertToModelMessages(messages);
@@ -96,7 +129,13 @@ export async function POST(req: Request) {
 
     // Return structured error for client-side handling
     return Response.json(
-      { error: message, provider, model: modelId },
+      {
+        code: "CHAT_ERROR",
+        message,
+        provider,
+        model: modelId,
+        retryable: true,
+      },
       { status: 500 }
     );
   }

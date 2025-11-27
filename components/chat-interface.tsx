@@ -7,37 +7,99 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Paperclip, Send, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { useChatStore } from "@/lib/chat-store";
+import { useCharacters } from "@/lib/hooks/use-characters";
+import { eventBus, Events } from "@/lib/events";
 
 export function ChatInterface() {
-  const { activePersonalityId, personalities, modelSettings } = useAppStore();
-  const activePersonality = personalities.find((p) => p.id === activePersonalityId);
+  const { modelSettings } = useAppStore();
+  const { characters } = useCharacters();
+  const { activeCharacterId, isPendingNewChat, confirmNewChat } = useChatStore();
+  const hasSentFirstMessage = useRef(false);
+
+  // Get active character
+  const activeCharacter = useMemo(
+    () => characters.find((c) => c.id === activeCharacterId) ?? characters[0],
+    [characters, activeCharacterId]
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
+  const conversationIdRef = useRef<string | null>(null);
 
-  // Memoize the transport to avoid recreating on every render
+  // Memoize the transport - system prompt is now built server-side
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
         body: {
-          personalityId: activePersonalityId,
+          characterId: activeCharacter?.id ?? "sam",
           modelSettings,
         },
       }),
-    [activePersonalityId, modelSettings]
+    [activeCharacter?.id, modelSettings]
   );
+
+  // Save message to database
+  const saveMessage = useCallback(
+    async (conversationId: string, role: string, content: string) => {
+      try {
+        await fetch(`/api/conversations/${conversationId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role, content }),
+        });
+      } catch (err) {
+        console.error("Failed to save message:", err);
+      }
+    },
+    []
+  );
+
+  // Create conversation when first message is sent
+  const createConversation = useCallback(async () => {
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId: activeCharacterId }),
+      });
+      if (res.ok) {
+        const conv = await res.json();
+        confirmNewChat(conv.id);
+        // Broadcast to sidebar to update conversation list
+        eventBus.emit(Events.CONVERSATION_CREATED, {
+          ...conv,
+          lastMessage: null,
+          lastMessageRole: null,
+        });
+        return conv.id;
+      }
+    } catch (err) {
+      console.error("Failed to create conversation:", err);
+    }
+    return null;
+  }, [activeCharacterId, confirmNewChat]);
 
   const { messages, sendMessage, status, error } = useChat({
     transport,
     onError: (err) => {
       console.error("Chat error:", err);
     },
-    onFinish: (message) => {
-      console.log("Chat finished:", message);
+    onFinish: async ({ message }) => {
+      // Get text content from the message
+      const textContent = message.parts
+        ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
+        .map((p) => p.text)
+        .join("") || "";
+
+      // Save assistant message
+      if (conversationIdRef.current && textContent) {
+        await saveMessage(conversationIdRef.current, "assistant", textContent);
+      }
     },
   });
 
@@ -55,11 +117,28 @@ export function ChatInterface() {
     }
   }, [error]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    void sendMessage({ text: input });
+
+    const userMessage = input.trim();
     setInput("");
+
+    // Create conversation on first message
+    if (isPendingNewChat && !hasSentFirstMessage.current) {
+      hasSentFirstMessage.current = true;
+      const convId = await createConversation();
+      if (convId) {
+        conversationIdRef.current = convId;
+        // Save user message
+        await saveMessage(convId, "user", userMessage);
+      }
+    } else if (conversationIdRef.current) {
+      // Save user message to existing conversation
+      await saveMessage(conversationIdRef.current, "user", userMessage);
+    }
+
+    void sendMessage({ text: userMessage });
   };
 
   return (
@@ -67,15 +146,15 @@ export function ChatInterface() {
       {/* Header */}
       <div className="flex items-center gap-3 border-b p-4 shadow-sm bg-background/80 backdrop-blur-md z-10">
         <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-          <AvatarImage src={activePersonality?.avatar} />
-          <AvatarFallback>{activePersonality?.name[0]}</AvatarFallback>
+          <AvatarImage src={activeCharacter?.avatar ?? undefined} />
+          <AvatarFallback>{activeCharacter?.name[0]}</AvatarFallback>
         </Avatar>
         <div>
           <div className="font-semibold flex items-center gap-2">
-            {activePersonality?.name}
+            {activeCharacter?.name}
             <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
           </div>
-          <div className="text-xs text-muted-foreground">{activePersonality?.description}</div>
+          <div className="text-xs text-muted-foreground">{activeCharacter?.description}</div>
         </div>
       </div>
 
@@ -85,10 +164,10 @@ export function ChatInterface() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-[50vh] text-center text-muted-foreground opacity-50">
               <Avatar className="h-20 w-20 mb-4 grayscale">
-                <AvatarImage src={activePersonality?.avatar} />
-                <AvatarFallback>{activePersonality?.name[0]}</AvatarFallback>
+                <AvatarImage src={activeCharacter?.avatar ?? undefined} />
+                <AvatarFallback>{activeCharacter?.name[0]}</AvatarFallback>
               </Avatar>
-              <p>Start a conversation with {activePersonality?.name}</p>
+              <p>Start a conversation with {activeCharacter?.name}</p>
             </div>
           )}
 
@@ -110,7 +189,7 @@ export function ChatInterface() {
             >
               {m.role !== "user" && (
                 <Avatar className="h-8 w-8 mt-1">
-                  <AvatarImage src={activePersonality?.avatar} />
+                  <AvatarImage src={activeCharacter?.avatar ?? undefined} />
                   <AvatarFallback>AI</AvatarFallback>
                 </Avatar>
               )}
@@ -139,7 +218,7 @@ export function ChatInterface() {
           {isLoading && (
             <div className="flex w-full gap-3 justify-start">
               <Avatar className="h-8 w-8 mt-1">
-                <AvatarImage src={activePersonality?.avatar} />
+                <AvatarImage src={activeCharacter?.avatar ?? undefined} />
                 <AvatarFallback>AI</AvatarFallback>
               </Avatar>
               <div className="bg-muted/50 border rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-1">
@@ -172,7 +251,7 @@ export function ChatInterface() {
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={`Message ${activePersonality?.name}...`}
+              placeholder={`Message ${activeCharacter?.name}...`}
               className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[40px]"
             />
 

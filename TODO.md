@@ -36,24 +36,24 @@
 - [x] Create separate development and test databases (e.g. `persona_dev`, `persona_test`) and configure connection URLs via environment variables.
 - [x] Install and configure DrizzleORM for PostgreSQL (client, schema registration, migration runner).
 - [x] Define DB schema for Conversation + Message using Drizzle models matching engine spec (user_id, character_id, timestamps, context tags, meta fields for tokens/provider/tool calls, etc.).
-- [ ] Implement REST API routes for conversations (create on first message send, list by user/character, rename, archive, delete) using Drizzle.
-- [ ] Wire left sidebar chat list to real conversations (title, last message preview, avatar), including an "Archived" collapsible section.
-- [ ] Implement "New Chat" action that selects the last-used character and persists the conversation when the first message is sent.
-- [ ] Implement "New Chat with This Character" action from character panel.
-- [ ] Implement archive semantics (move to Archived section, hide from active views, and exclude from RAG).
-- [ ] Implement delete semantics (hard delete messages + embeddings; stub memory recalibration hook for later phases).
+- [x] Implement REST API routes for conversations (create on first message send, list by user/character, rename, archive, delete) using Drizzle.
+- [x] Wire left sidebar chat list to real conversations (title, last message preview, avatar), including an "Archived" collapsible section.
+- [x] Implement "New Chat" action that selects the last-used character and persists the conversation when the first message is sent.
+- [x] Implement "New Chat with This Character" action from character panel.
+- [x] Implement archive semantics (move to Archived section, hide from active views, and exclude from RAG).
+- [x] Implement delete semantics (hard delete messages + embeddings; stub memory recalibration hook for later phases).
 - [ ] Add unit/integration tests (Vitest) and e2e coverage (Playwright) for chat creation, switching, archive/delete, and basic error cases.
 
 ### 1.2 Character Panel Integration
 
-- [ ] Replace mock personalities store with persisted Character entities aligned to engine `Character` model (persona_fields, behavior_rules, flags, etc.), using explicit text columns rather than JSON blobs.
-- [ ] Seed initial built-in characters (Sam, Therapist, Coding Guru, Creative Writer, Data Analyst, Custom) via one-time migration from markdown prompt template files stored under `config/characters`.
-- [ ] Load list of characters for the current user into right panel dropdown.
-- [ ] Add search/filter for characters in dropdown.
-- [ ] Add actions from panel: Edit (open builder), Duplicate, Archive, Delete, Export (using portable character export format v1).
-- [ ] Ensure character selection is per-chat and stored on Conversation.
+- [x] Replace mock personalities store with persisted Character entities aligned to engine `Character` model (persona_fields, behavior_rules, flags, etc.), using explicit text columns rather than JSON blobs.
+- [x] Seed initial built-in characters (Sam, Therapist, Coding Guru, Creative Writer, Data Analyst) via seed script (config/characters templates deferred to later phase).
+- [x] Load list of characters for the current user into right panel dropdown.
+- [x] Add search/filter for characters in dropdown.
+- [x] Add actions from panel: Edit (disabled until builder), Duplicate, Archive, Delete. Export deferred to 2.4.
+- [x] Ensure character selection is per-chat and stored on Conversation.
 - [ ] When switching character in a chat, render a UI-only separator noting the change (do not persist an extra system message in the conversation history).
-- [ ] Show name, avatar, tagline, and brief role description in the character panel header.
+- [x] Show name, avatar, tagline, and brief role description in the character panel header.
 
 ### 1.3 Model Settings (Per Character, Per Chat Overrides)
 
