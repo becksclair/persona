@@ -33,17 +33,18 @@ import {
   Pencil,
   MessageSquarePlus,
   Loader2,
+  RefreshCw,
+  Pause,
+  Play,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCharacters } from "@/lib/hooks/use-characters";
 import { useChatStore } from "@/lib/chat-store";
-
-// Mock uploaded documents (to be replaced with real KB files later)
-const UPLOADED_DOCS = [
-  { id: "1", name: "Marketing_Strategy_Q3.pdf" },
-  { id: "2", name: "Company_Guidelines.docx" },
-];
+import { useKnowledgeBase, formatFileSize, getStatusStyle } from "@/lib/hooks/use-knowledge-base";
 
 // Avatar color mapping
 function getAvatarColor(name: string): string {
@@ -66,6 +67,17 @@ export function SidebarRight() {
   const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter } =
     useCharacters();
   const { activeCharacterId, setActiveCharacter, startNewChat } = useChatStore();
+  const {
+    files: kbFiles,
+    stats: kbStats,
+    loading: kbLoading,
+    uploading: kbUploading,
+    error: kbError,
+    uploadFile,
+    updateFile,
+    deleteFile,
+  } = useKnowledgeBase(activeCharacterId);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Memoize available models list
   const availableModels = useMemo(() => ModelService.getAvailableModels(), []);
@@ -343,38 +355,167 @@ export function SidebarRight() {
 
           {/* Memory (RAG) Section */}
           <div className="space-y-4">
-            <Label className="text-sm font-medium">Memory (RAG)</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Memory (RAG)</Label>
+              {kbStats && (
+                <span className="text-[10px] text-muted-foreground">
+                  {kbStats.totalChunks} chunks
+                </span>
+              )}
+            </div>
 
             {/* Knowledge Base Upload */}
             <div className="space-y-3">
-              <Label className="text-xs text-muted-foreground">Knowledge Base</Label>
-              <div className="border-2 border-dashed border-sidebar-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">
-                  Upload documents (PDF, TXT, DOCX) to enhance context.
-                </p>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Knowledge Base</Label>
+                {kbStats && (
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1",
+                    kbStats.embeddingService.available
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-red-500/20 text-red-400"
+                  )}>
+                    {kbStats.embeddingService.available ? (
+                      <><CheckCircle2 className="h-3 w-3" /> Embeddings Ready</>
+                    ) : (
+                      <><AlertCircle className="h-3 w-3" /> No Embedding Service</>
+                    )}
+                  </span>
+                )}
               </div>
+              <label className="border-2 border-dashed border-sidebar-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer block">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".txt,.md,.json,.pdf,.doc,.docx,.html,.csv,.xml"
+                  disabled={kbUploading || !activeCharacterId}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setUploadError(null);
+                      try {
+                        await uploadFile(file);
+                      } catch (err) {
+                        setUploadError(err instanceof Error ? err.message : "Upload failed");
+                        // Auto-clear error after 5 seconds
+                        setTimeout(() => setUploadError(null), 5000);
+                      }
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                {kbUploading ? (
+                  <>
+                    <Loader2 className="h-6 w-6 mx-auto mb-2 text-primary animate-spin" />
+                    <p className="text-xs text-muted-foreground">Uploading & indexing...</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      Upload documents (PDF, TXT, DOCX) to enhance context.
+                    </p>
+                    {kbStats && (
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">
+                        Max {formatFileSize(kbStats.config.maxFileSizeBytes)} per file
+                      </p>
+                    )}
+                  </>
+                )}
+              </label>
 
-              {/* Uploaded Documents List */}
+              {/* Upload Error Display */}
+              {(uploadError || kbError) && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{uploadError || kbError}</span>
+                </div>
+              )}
+
+              {/* Knowledge Base Files List */}
               <div className="space-y-2">
-                {UPLOADED_DOCS.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-background text-xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="truncate">{doc.name}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                {kbLoading ? (
+                  <div className="flex items-center justify-center py-4 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Loading...
                   </div>
-                ))}
+                ) : kbFiles.length === 0 ? (
+                  <div className="text-center py-3 text-[10px] text-muted-foreground">
+                    No files uploaded yet
+                  </div>
+                ) : (
+                  kbFiles.map((file) => {
+                    const statusStyle = getStatusStyle(file.status);
+                    return (
+                      <div
+                        key={file.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-background text-xs group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {file.status === "indexing" ? (
+                            <Loader2 className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+                          ) : file.status === "failed" ? (
+                            <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+                          ) : file.status === "paused" ? (
+                            <Clock className="h-4 w-4 text-amber-400 shrink-0" />
+                          ) : (
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{file.fileName}</div>
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <span>{formatFileSize(file.fileSizeBytes)}</span>
+                              {file.chunkCount !== undefined && (
+                                <><span className="opacity-40">•</span><span>{file.chunkCount} chunks</span></>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={cn("text-[9px] px-1 py-0.5 rounded", statusStyle.className)}>
+                            {statusStyle.label}
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-36">
+                              {file.status === "paused" ? (
+                                <DropdownMenuItem onClick={() => void updateFile(file.id, "resume")}>
+                                  <Play className="h-3.5 w-3.5 mr-2" />
+                                  Resume
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => void updateFile(file.id, "pause")}>
+                                  <Pause className="h-3.5 w-3.5 mr-2" />
+                                  Pause
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => void updateFile(file.id, "reindex")}>
+                                <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                                Re-index
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => void deleteFile(file.id, true)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 

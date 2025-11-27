@@ -4,6 +4,8 @@ import { characters, conversations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { buildSystemPrompt, FALLBACK_PROMPTS } from "@/lib/prompts";
 import { ModelService } from "@/lib/model-service";
+import { getCurrentUser } from "@/lib/auth";
+import { retrieveRelevantMemories, formatMemoriesForPrompt, getMemoryItemIds } from "@/lib/rag";
 import type { ModelSettings } from "@/lib/types";
 
 /**
@@ -28,12 +30,16 @@ import type { ModelSettings } from "@/lib/types";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  // Get current user for RAG scoping (optional - RAG works without auth for dev)
+  const user = await getCurrentUser();
+
   let body: {
     messages?: unknown;
     conversationId?: string;
     characterId?: string;
     personalityId?: string; // Legacy support
     modelSettings?: ModelSettings; // Client-side override (legacy, lowest priority)
+    enableRAG?: boolean; // Explicitly enable/disable RAG for this request
   };
 
   try {
@@ -45,7 +51,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { messages, conversationId, modelSettings } = body;
+  const { messages, conversationId, modelSettings, enableRAG = true } = body;
   // Support both characterId and legacy personalityId
   const characterId = body.characterId ?? body.personalityId;
 
@@ -94,6 +100,40 @@ export async function POST(req: Request) {
     systemPrompt = FALLBACK_PROMPTS[characterId] ?? FALLBACK_PROMPTS.sam;
   } else {
     systemPrompt = FALLBACK_PROMPTS.sam;
+  }
+
+  // RAG: Retrieve relevant memories and inject into prompt
+  // memoryItemsUsed captured for logging and future inspector tools (TODO: persist in message meta)
+  let _memoryItemsUsed: string[] = [];
+  if (enableRAG && user) {
+    try {
+      // Extract the last user message as the query
+      const lastUserMessage = [...messages].reverse().find(
+        (m: { role: string; parts?: Array<{ type: string; text?: string }> }) => m.role === "user"
+      );
+      const queryText = lastUserMessage?.parts
+        ?.filter((p: { type: string }) => p.type === "text")
+        ?.map((p: { text?: string }) => p.text)
+        ?.join(" ") ?? "";
+
+      if (queryText) {
+        const ragResult = await retrieveRelevantMemories({
+          userId: user.userId,
+          characterId: character?.id ?? null,
+          conversationId: conversationId ?? null,
+          query: queryText,
+        });
+
+        if (ragResult.memories.length > 0) {
+          const ragContext = formatMemoriesForPrompt(ragResult.memories);
+          systemPrompt = `${systemPrompt}\n\n${ragContext}`;
+          _memoryItemsUsed = getMemoryItemIds(ragResult.memories);
+          console.log(`[chat] RAG: Retrieved ${ragResult.memories.length} memories for query`);
+        }
+      }
+    } catch (ragError) {
+      console.warn("[chat] RAG retrieval failed, continuing without context:", ragError);
+    }
   }
 
   // Resolve effective model settings using priority chain:

@@ -29,6 +29,11 @@ export const ErrorCodes = {
   CONVERSATION_NOT_FOUND: "CONVERSATION_NOT_FOUND",
   CHARACTER_NOT_FOUND: "CHARACTER_NOT_FOUND",
   MESSAGE_NOT_FOUND: "MESSAGE_NOT_FOUND",
+  FILE_NOT_FOUND: "FILE_NOT_FOUND",
+
+  // File errors
+  FILE_TOO_LARGE: "FILE_TOO_LARGE",
+  INDEXING_FAILED: "INDEXING_FAILED",
 
   // Operation errors
   OPERATION_FAILED: "OPERATION_FAILED",
@@ -91,4 +96,13 @@ export const Errors = {
 
   internal: (message = "An unexpected error occurred") =>
     apiError(ErrorCodes.INTERNAL_ERROR, message, 500, { retryable: true }),
+
+  fileNotFound: () =>
+    apiError(ErrorCodes.FILE_NOT_FOUND, "Knowledge base file not found", 404),
+
+  fileTooLarge: (maxSize: string) =>
+    apiError(ErrorCodes.FILE_TOO_LARGE, `File exceeds maximum size (${maxSize})`, 413),
+
+  indexingFailed: (reason?: string) =>
+    apiError(ErrorCodes.INDEXING_FAILED, reason ?? "File indexing failed", 500, { retryable: true }),
 };

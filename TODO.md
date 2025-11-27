@@ -69,17 +69,17 @@
 
 ### 1.4 RAG / Knowledge Base (Per Character)
 
-- [ ] Implement backend file upload endpoint + storage for knowledge base files (per user + character), storing files on local filesystem with an abstraction that can later support S3-style storage.
-- [ ] Enforce a 10MB per-file size limit (no file type restrictions for now).
-- [ ] Store file metadata (name, type, size, status, tags).
-- [ ] Implement indexing pipeline: chunk files, embed using a local embedding provider, and store `MemoryItem`s in PostgreSQL 18 pgvector storage as per engine spec.
-- [ ] Surface file status in UI (Indexing, Ready, Failed).
-- [ ] Implement actions: Remove (soft delete), Re-index, Pause (exclude from retrieval).
-- [ ] On each chat turn, retrieve a configurable top-K (default 8) relevant `MemoryItem`s for (user, character, conversation), excluding archived conversations.
-- [ ] Inject compact "Relevant past info" block into prompts.
-- [ ] Log which `MemoryItem`s were used for each chat turn to support future inspector tools.
-- [ ] Add minimal per-character memory viewer listing files and key stats, accessible from the advanced Settings dialog.
-- [ ] Centralize the RAG retrieval top-K default (8) in a small config so it can be tuned without code changes.
+- [x] Implement backend file upload endpoint + storage for knowledge base files (per user + character), storing files on local filesystem with an abstraction that can later support S3-style storage.
+- [x] Enforce a 10MB per-file size limit (no file type restrictions for now).
+- [x] Store file metadata (name, type, size, status, tags).
+- [x] Implement indexing pipeline: chunk files, embed using a local embedding provider, and store `MemoryItem`s in PostgreSQL 18 pgvector storage as per engine spec.
+- [x] Surface file status in UI (Indexing, Ready, Failed).
+- [x] Implement actions: Remove (soft delete), Re-index, Pause (exclude from retrieval).
+- [x] On each chat turn, retrieve a configurable top-K (default 8) relevant `MemoryItem`s for (user, character, conversation), excluding archived conversations.
+- [x] Inject compact "Relevant past info" block into prompts.
+- [x] Log which `MemoryItem`s were used for each chat turn to support future inspector tools.
+- [x] Add minimal per-character memory viewer listing files and key stats, accessible from the advanced Settings dialog.
+- [x] Centralize the RAG retrieval top-K default (8) in a small config so it can be tuned without code changes.
 - [ ] Refactor indexing pipeline in a later phase to run asynchronously via a background job queue instead of synchronously in the upload request.
 
 ### 1.5 Message Copy & Export

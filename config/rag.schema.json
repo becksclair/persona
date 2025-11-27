@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RAG Configuration",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Config schema version"
+    },
+    "retrieval": {
+      "type": "object",
+      "properties": {
+        "defaultTopK": {
+          "type": "integer",
+          "description": "Default number of memory items to retrieve per chat turn",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 50
+        },
+        "maxTopK": {
+          "type": "integer",
+          "description": "Maximum allowed top-K value",
+          "default": 20
+        },
+        "minSimilarityScore": {
+          "type": "number",
+          "description": "Minimum cosine similarity score for retrieval",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": ["defaultTopK"]
+    },
+    "chunking": {
+      "type": "object",
+      "properties": {
+        "chunkSize": {
+          "type": "integer",
+          "description": "Target size of text chunks in characters",
+          "default": 500
+        },
+        "chunkOverlap": {
+          "type": "integer",
+          "description": "Overlap between consecutive chunks",
+          "default": 50
+        }
+      }
+    },
+    "upload": {
+      "type": "object",
+      "properties": {
+        "maxFileSizeBytes": {
+          "type": "integer",
+          "description": "Maximum file size in bytes (default 10MB)",
+          "default": 10485760
+        }
+      }
+    },
+    "embedding": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["lmstudio", "openai"],
+          "description": "Primary embedding provider"
+        },
+        "model": {
+          "type": "string",
+          "description": "Primary embedding model ID"
+        },
+        "dimensions": {
+          "type": "integer",
+          "description": "Embedding vector dimensions"
+        },
+        "fallbackProvider": {
+          "type": "string",
+          "enum": ["lmstudio", "openai"],
+          "description": "Fallback embedding provider if primary fails"
+        },
+        "fallbackModel": {
+          "type": "string",
+          "description": "Fallback embedding model ID"
+        }
+      }
+    }
+  },
+  "required": ["version", "retrieval"]
+}

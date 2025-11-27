@@ -1,0 +1,26 @@
+{
+  "$schema": "./rag.schema.json",
+  "version": "1.0",
+  "retrieval": {
+    "defaultTopK": 8,
+    "maxTopK": 20,
+    "minSimilarityScore": 0.5
+  },
+  "chunking": {
+    "chunkSize": 500,
+    "chunkOverlap": 50
+  },
+  "upload": {
+    "maxFileSizeBytes": 10485760
+  },
+  "embedding": {
+    "provider": "lmstudio",
+    "model": "text-embedding-bge-m3",
+    "dimensions": 1024,
+    "fallbackProvider": "openai",
+    "fallbackModel": "text-embedding-3-small",
+    "fallbackDimensions": 1536,
+    "retryAttempts": 3,
+    "retryDelayMs": 1000
+  }
+}

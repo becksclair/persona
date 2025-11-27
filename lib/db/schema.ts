@@ -181,7 +181,9 @@ export const memoryItems = pgTable(
     sourceType: text("source_type").notNull(), // 'message' | 'file' | 'manual'
     sourceId: uuid("source_id"),
     content: text("content").notNull(),
-    embedding: vector("embedding", { dimensions: 1536 }), // OpenAI ada-002 dimensions
+    // Note: dimensions must match embedding model output (1024 for bge-m3, 1536 for OpenAI)
+    // Using 1024 for LM Studio bge-m3; OpenAI fallback truncates
+    embedding: vector("embedding", { dimensions: 1024 }),
     tags: jsonb("tags").$type<string[]>(),
     visibilityPolicy: text("visibility_policy").default("normal").notNull(), // 'normal' | 'sensitive' | 'exclude_from_rag'
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
