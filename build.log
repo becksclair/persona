@@ -1,0 +1,107 @@
+
+> persona@0.1.0 build
+> next build
+
+ ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\dev\projects\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\dev\projects\persona\package-lock.json
+
+   Γû▓ Next.js 16.0.5 (Turbopack)
+
+   Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 4 errors:
+./persona/components/sidebar-right.tsx:9:1
+Module not found: Can't resolve '@/components/ui/select'
+   7 | import { Slider } from "@/components/ui/slider";
+   8 | import { Switch } from "@/components/ui/switch";
+>  9 | import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  10 | import { Separator } from "@/components/ui/separator";
+  11 | import { Textarea } from "@/components/ui/textarea";
+  12 | import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+Import map: aliased to relative './components/ui/select' inside of [project]/persona
+
+
+Import trace:
+  Server Component:
+    ./persona/components/sidebar-right.tsx
+    ./persona/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./persona/components/sidebar-right.tsx:8:1
+Module not found: Can't resolve '@/components/ui/select'
+   6 | import { Slider } from "@/components/ui/slider";
+   7 | import { Switch } from "@/components/ui/switch";
+>  8 | import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { Separator } from "@/components/ui/separator";
+  10 | import { Textarea } from "@/components/ui/textarea";
+  11 | import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+Import map: aliased to relative './components/ui/select' inside of [project]/persona
+
+
+Import trace:
+  Server Component:
+    ./persona/components/sidebar-right.tsx
+    ./persona/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./persona/components/chat-interface.tsx:4:1
+Module not found: Can't resolve 'ai/react'
+  2 |
+  3 | import { c as _c } from "react/compiler-runtime";
+> 4 | import { useChat } from 'ai/react';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { useAppStore } from "@/lib/store";
+  6 | import { ScrollArea } from "@/components/ui/scroll-area";
+  7 | import { Button } from "@/components/ui/button";
+
+
+
+Import trace:
+  Server Component:
+    ./persona/components/chat-interface.tsx
+    ./persona/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./persona/components/chat-interface.tsx:3:1
+Module not found: Can't resolve 'ai/react'
+  1 | 'use client';
+  2 |
+> 3 | import { useChat } from 'ai/react';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { useAppStore } from "@/lib/store";
+  5 | import { ScrollArea } from "@/components/ui/scroll-area";
+  6 | import { Button } from "@/components/ui/button";
+
+
+
+Import trace:
+  Server Component:
+    ./persona/components/chat-interface.tsx
+    ./persona/app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./persona/components/sidebar-right.tsx:9:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./persona/components/sidebar-right.tsx:8:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./persona/components/chat-interface.tsx:4:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./persona/components/chat-interface.tsx:3:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
