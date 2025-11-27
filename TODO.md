@@ -25,10 +25,10 @@
 
 ### 1.0 User Auth & Identity
 
-- [ ] Implement basic email/password auth with sessions for a single-tenant dev user (no OAuth yet).
-- [ ] Introduce `user_id` on core entities (User, Character, Conversation, Message, MemoryItem, KnowledgeBaseFile) and scope all queries to the current user.
-- [ ] Seed a default dev user via migration for local development and tests.
-- [ ] Add per-user settings table to persist chat UX preferences (e.g. "Enter sends vs Ctrl+Enter").
+- [x] Implement basic email/password auth with sessions for a single-tenant dev user (no OAuth yet).
+- [x] Introduce `user_id` on core entities (User, Character, Conversation, Message, MemoryItem, KnowledgeBaseFile) and scope all queries to the current user.
+- [x] Seed a default dev user via migration for local development and tests.
+- [x] Add per-user settings table to persist chat UX preferences (e.g. "Enter sends vs Ctrl+Enter").
 
 ### 1.1 Chats & Sessions
 

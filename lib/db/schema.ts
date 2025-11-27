@@ -33,6 +33,25 @@ export const userSettings = pgTable("user_settings", {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Sessions (for auth)
+// ─────────────────────────────────────────────────────────────
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("sessions_user_id_idx").on(table.userId),
+    index("sessions_token_idx").on(table.token),
+    index("sessions_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────
 // Characters (Constructs)
 // ─────────────────────────────────────────────────────────────
 export const characters = pgTable("characters", {
@@ -181,9 +200,17 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.id],
     references: [userSettings.userId],
   }),
+  sessions: many(sessions),
   characters: many(characters),
   conversations: many(conversations),
   knowledgeBaseFiles: many(knowledgeBaseFiles),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
 }));
 
 export const charactersRelations = relations(characters, ({ one, many }) => ({

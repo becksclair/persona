@@ -13,6 +13,11 @@ export const DEV_USER_ID = "00000000-0000-0000-0000-000000000001";
 export const DEV_USER_EMAIL = "dev@persona.local";
 
 /**
+ * Default password for dev user (local development only!)
+ */
+export const DEV_USER_PASSWORD = "devpass123";
+
+/**
  * Built-in character IDs (stable across seed runs)
  */
 export const BUILT_IN_CHARACTER_IDS = {

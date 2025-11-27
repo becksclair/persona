@@ -2,7 +2,8 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { users, userSettings, characters } from "../lib/db/schema";
-import { DEV_USER_ID, DEV_USER_EMAIL } from "../lib/db/constants";
+import { DEV_USER_ID, DEV_USER_EMAIL, DEV_USER_PASSWORD } from "../lib/db/constants";
+import { hashPassword } from "../lib/auth/password";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -12,9 +13,6 @@ if (!DATABASE_URL) {
 
 const client = postgres(DATABASE_URL);
 const db = drizzle(client);
-
-// Simple password hash for dev user (NOT for production!)
-const DEV_PASSWORD_HASH = "dev_placeholder_hash";
 
 // Built-in characters with stable IDs for idempotent seeding
 const BUILT_IN_CHARACTERS = [
@@ -71,19 +69,22 @@ const BUILT_IN_CHARACTERS = [
 async function seed() {
   console.log("🌱 Seeding database...\n");
 
+  // Hash the dev password
+  const passwordHash = await hashPassword(DEV_USER_PASSWORD);
+
   // Upsert dev user with stable ID
   await db
     .insert(users)
     .values({
       id: DEV_USER_ID,
       email: DEV_USER_EMAIL,
-      passwordHash: DEV_PASSWORD_HASH,
+      passwordHash,
     })
     .onConflictDoUpdate({
       target: users.id,
-      set: { email: DEV_USER_EMAIL, updatedAt: new Date() },
+      set: { email: DEV_USER_EMAIL, passwordHash, updatedAt: new Date() },
     });
-  console.log("✓ Upserted dev user:", DEV_USER_EMAIL);
+  console.log("✓ Upserted dev user:", DEV_USER_EMAIL, "(password: devpass123)");
 
   // Upsert user settings
   await db

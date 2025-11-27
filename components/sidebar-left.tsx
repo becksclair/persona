@@ -5,9 +5,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Sun, Moon, Monitor } from "lucide-react";
+import { Plus, Search, Sun, Moon, Monitor, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
+import { useAuth } from "@/components/auth-provider";
 
 // Mock chat history matching mockup
 const CHAT_HISTORY = [
@@ -55,6 +56,7 @@ export function SidebarLeft() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeChatId, setActiveChatId] = useState("2");
   const { theme, setTheme } = useTheme();
+  const { user, logout } = useAuth();
 
   const filteredChats = CHAT_HISTORY.filter((chat) =>
     chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -156,13 +158,21 @@ export function SidebarLeft() {
           <Avatar className="h-9 w-9 ring-2 ring-primary/20">
             <AvatarImage src="/user-avatar.png" />
             <AvatarFallback className="bg-linear-to-br from-primary to-primary/60 text-primary-foreground">
-              U
+              {user?.email?.[0]?.toUpperCase() ?? "U"}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">User</div>
-            <div className="text-xs text-muted-foreground">Pro Plan</div>
+            <div className="text-sm font-medium truncate">{user?.email ?? "User"}</div>
+            <div className="text-xs text-muted-foreground">Local Dev</div>
           </div>
+          <button
+            onClick={() => void logout()}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+            title="Sign out"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>
