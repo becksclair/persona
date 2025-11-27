@@ -84,22 +84,22 @@
 
 ### 1.5 Message Copy & Export
 
-- [ ] Add per-message "Copy" button for user + assistant messages, visible on hover.
-- [ ] Implement `Ctrl+Shift+C` keyboard shortcut to copy the last assistant message.
-- [ ] Implement chat-level export menu (Markdown + JSON).
-- [ ] Ensure exports include character, model, and UTC timestamps, and include system + tool messages as well as user/assistant messages.
-- [ ] Basic tests for export formats and copy interactions (including keyboard shortcut).
+- [x] Add per-message "Copy" button for user + assistant messages, visible on hover.
+- [x] Implement `Ctrl+Shift+C` keyboard shortcut to copy the last assistant message.
+- [x] Implement chat-level export menu (Markdown + JSON).
+- [x] Ensure exports include character, model, and UTC timestamps, and include system + tool messages as well as user/assistant messages.
+- [x] Basic tests for export formats and copy interactions (including keyboard shortcut).
 
 ### 1.6 Basic UX Polish
 
-- [ ] Implement `Ctrl+Enter` / `Cmd+Enter` to send; `Enter` behavior is configurable via a setting.
-- [ ] Persist "Enter sends vs Ctrl+Enter" preference in the per-user settings table.
-- [ ] Implement `Esc` to blur input.
-- [ ] Ensure theme toggle fully wired (light/dark/system) and persisted using Next.js theme libraries.
-- [ ] Implement graceful error UI using structured errors from `/api/chat` with "Retry" action that re-sends the last user message.
-- [ ] Standardize `/api/chat` error payload shape (e.g. `{ code, message, retryable }`) and log failures for debugging.
-- [ ] Add small loading/streaming indicators in chat header or input area.
-- [ ] Add a Settings dialog/page for advanced configuration (keyboard preferences, RAG on/off, entry point to per-character memory viewer and advanced character configuration).
+- [x] Implement `Ctrl+Enter` / `Cmd+Enter` to send; `Enter` behavior is configurable via a setting.
+- [x] Persist "Enter sends vs Ctrl+Enter" preference in the per-user settings table.
+- [x] Implement `Esc` to blur input.
+- [x] Ensure theme toggle fully wired (light/dark/system) and persisted using Next.js theme libraries.
+- [x] Implement graceful error UI using structured errors from `/api/chat` with "Retry" action that re-sends the last user message.
+- [x] Standardize `/api/chat` error payload shape (e.g. `{ code, message, retryable }`) and log failures for debugging.
+- [x] Add small loading/streaming indicators in chat header or input area.
+- [x] Add a Settings dialog/page for advanced configuration (keyboard preferences, RAG on/off, entry point to per-character memory viewer and advanced character configuration).
 
 ---
 
