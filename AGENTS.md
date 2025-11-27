@@ -16,7 +16,7 @@
 - `pnpm build` / `pnpm start` — production build + TypeScript check, then serve.
 - `pnpm test` / `pnpm test:watch` — Vitest suite; single test: `pnpm test -- tests/chat-export.test.ts` or `pnpm test -- -t "test name"`.
 - `pnpm test:e2e` / `pnpm test:e2e:all` / `pnpm test:e2e:ui` — Playwright E2E; run one file with `pnpm test:e2e -- e2e/chat.spec.ts`.
-- Database/Drizzle: prefer `pnpm db:generate`, `pnpm db:push`, `pnpm db:migrate`, `pnpm db:studio`, `pnpm db:seed`. If you invoke `drizzle-kit` directly, always pass `--yes` (non-interactive, auto-approve) instead of relying on interactive prompts.
+- Database/Drizzle: prefer `pnpm db:generate`, `pnpm db:push`, `pnpm db:migrate`, `pnpm db:studio`, `pnpm db:seed`. If you invoke `drizzle-kit push` directly, always pass `--force` (non-interactive, auto-approve) instead of relying on interactive prompts.
 
 ## Coding Style & Naming Conventions
 
@@ -32,4 +32,3 @@
 ## Commit & Scope Guidelines
 
 - Commits: ultra-short, imperative, lowercase (e.g. `add persona slider`, `fix chat stream`).
-- This repo is an MVP: favor minimal, demonstrable value over completeness; keep auth/validation light but reuse existing patterns (Zustand store, Radix wrappers, Tailwind tokens) and keep deps pnpm-managed.
