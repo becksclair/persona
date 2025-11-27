@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+
 // Mock chat history matching mockup
 const CHAT_HISTORY = [
   {
@@ -52,7 +53,7 @@ export function SidebarLeft() {
   );
 
   return (
-    <div className="flex h-full w-72 flex-col border-r border-sidebar-border bg-sidebar">
+    <div className="flex h-full w-72 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar">
       {/* Logo/Branding */}
       <div className="flex items-center gap-2 p-4 pb-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
@@ -88,7 +89,7 @@ export function SidebarLeft() {
       </div>
 
       {/* Chat List */}
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className="flex-1 min-h-0 px-2">
         <div className="space-y-1 p-2">
           {filteredChats.map((chat) => (
             <button
@@ -118,10 +119,10 @@ export function SidebarLeft() {
 
       {/* User Profile Footer */}
       <div className="p-3 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent/30 p-3">
+        <div className="flex items-center gap-3 rounded-xl bg-background p-3">
           <Avatar className="h-9 w-9 ring-2 ring-primary/20">
             <AvatarImage src="/user-avatar.png" />
-            <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
+            <AvatarFallback className="bg-linear-to-br from-primary to-primary/60 text-primary-foreground">
               U
             </AvatarFallback>
           </Avatar>

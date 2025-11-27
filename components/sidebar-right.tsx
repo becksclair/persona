@@ -38,13 +38,13 @@ export function SidebarRight() {
     personalities.find((p) => p.id === activePersonalityId) || personalities[0];
 
   return (
-    <div className="flex h-full w-80 flex-col border-l border-sidebar-border bg-sidebar">
+    <div className="flex h-full w-80 flex-col overflow-hidden border-l border-sidebar-border bg-sidebar">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-sidebar-border p-4">
         <h2 className="text-base font-semibold">Character & Memory</h2>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-6 p-4">
           {/* Character Profile Section */}
           <div className="space-y-3">
@@ -147,7 +147,7 @@ export function SidebarRight() {
                 {UPLOADED_DOCS.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-sidebar-accent/30 text-xs"
+                    className="flex items-center justify-between p-2 rounded-lg bg-background text-xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />

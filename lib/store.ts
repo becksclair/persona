@@ -14,6 +14,7 @@ interface AppStore {
   activePersonalityId: string;
   modelSettings: ModelSettings;
   ragSettings: RAGSettings;
+  hasHydrated: boolean;
 
   // Actions
   setActivePersonality: (id: string) => void;
@@ -21,6 +22,7 @@ interface AppStore {
   updateRAGSettings: (settings: Partial<RAGSettings>) => void;
   addPersonality: (personality: Personality) => void;
   updatePersonality: (id: string, personality: Partial<Personality>) => void;
+  _setHasHydrated: (hydrated: boolean) => void;
 }
 
 const DEFAULT_PERSONALITIES: Personality[] = [
@@ -92,6 +94,9 @@ const DEFAULT_RAG_SETTINGS: RAGSettings = {
   knowledgeBase: [],
 };
 
+// Simple hydration selector - use directly instead of a separate hook
+export const useHasHydrated = () => useAppStore((s) => s.hasHydrated);
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
@@ -99,6 +104,7 @@ export const useAppStore = create<AppStore>()(
       activePersonalityId: "sam",
       modelSettings: DEFAULT_MODEL_SETTINGS,
       ragSettings: DEFAULT_RAG_SETTINGS,
+      hasHydrated: false,
 
       setActivePersonality: (id) => set({ activePersonalityId: id }),
 
@@ -138,9 +144,14 @@ export const useAppStore = create<AppStore>()(
             p.id === id ? { ...p, ...personality } : p,
           ),
         })),
+
+      _setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
     }),
     {
       name: "persona-storage",
+      onRehydrateStorage: () => (state) => {
+        state?._setHasHydrated(true);
+      },
     },
   ),
 );

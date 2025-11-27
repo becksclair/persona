@@ -44,7 +44,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-1 flex-col h-full bg-background/50 backdrop-blur-sm relative">
+    <div className="flex flex-1 flex-col h-full bg-background relative">
       {/* Header */}
       <div className="flex items-center gap-3 border-b p-4 shadow-sm bg-background/80 backdrop-blur-md z-10">
         <Avatar className="h-10 w-10 ring-2 ring-primary/20">
