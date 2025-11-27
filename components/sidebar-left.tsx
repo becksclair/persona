@@ -5,8 +5,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
 // Mock chat history matching mockup
 const CHAT_HISTORY = [
@@ -44,9 +45,16 @@ const CHAT_HISTORY = [
   },
 ];
 
+const THEME_OPTIONS = [
+  { value: "light", icon: Sun, label: "Light" },
+  { value: "dark", icon: Moon, label: "Dark" },
+  { value: "system", icon: Monitor, label: "System" },
+] as const;
+
 export function SidebarLeft() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeChatId, setActiveChatId] = useState("2");
+  const { theme, setTheme } = useTheme();
 
   const filteredChats = CHAT_HISTORY.filter((chat) =>
     chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -117,8 +125,33 @@ export function SidebarLeft() {
         </div>
       </ScrollArea>
 
-      {/* User Profile Footer */}
-      <div className="p-3 border-t border-sidebar-border">
+      {/* Footer */}
+      <div className="p-3 border-t border-sidebar-border space-y-3">
+        {/* Theme Toggle */}
+        <div className="flex items-center rounded-lg bg-sidebar-accent/50 p-0.5">
+          {THEME_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isActive = theme === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setTheme(opt.value)}
+                className={cn(
+                  "flex-1 flex items-center justify-center rounded-md p-2 transition-all",
+                  isActive
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                title={opt.label}
+                aria-label={`Switch to ${opt.label} theme`}
+              >
+                <Icon className="h-4 w-4" />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* User Profile */}
         <div className="flex items-center gap-3 rounded-xl bg-background p-3">
           <Avatar className="h-9 w-9 ring-2 ring-primary/20">
             <AvatarImage src="/user-avatar.png" />
