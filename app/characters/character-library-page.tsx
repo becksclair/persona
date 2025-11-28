@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +23,7 @@ import {
   Trash2,
   Pencil,
   Download,
+  Upload,
   ArrowLeft,
   Users,
   Briefcase,
@@ -44,6 +45,19 @@ import { Label } from "@/components/ui/label";
 import { useTemplates } from "@/lib/hooks/use-templates";
 import { cn } from "@/lib/utils";
 import { useCharacters, type Character } from "@/lib/hooks/use-characters";
+import { useToast } from "@/lib/hooks/use-toast";
+import {
+  extractPortableFields,
+  validatePortableCharacter,
+  validatePortableCharacterBatch,
+  type PortableCharacterV1,
+  createPortableExport,
+  portableToMarkdown,
+  portableBatchToMarkdown,
+  parsePortableMarkdownBatch,
+} from "@/lib/portable-character";
+import { eventBus, Events } from "@/lib/events";
+import { ImportPreviewModal } from "@/components/import-preview-modal";
 
 // Tag definitions with icons and colors
 const TAG_FILTERS = [
@@ -196,10 +210,17 @@ const TEMPLATE_ICONS = ["📝", "💡", "⭐", "🎯", "🔥", "💎", "🌟", "
 
 export function CharacterLibraryPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter } =
+  const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter, refetch } =
     useCharacters({ includeArchived: false });
+
+  // Import state
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [importPreviewData, setImportPreviewData] = useState<
+    PortableCharacterV1 | PortableCharacterV1[] | null
+  >(null);
 
   // Template dialog state
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -238,6 +259,11 @@ export function CharacterLibraryPage() {
 
   const handleDuplicate = async (id: string) => {
     const duplicate = await duplicateCharacter(id);
+    toast({
+      title: "Character duplicated",
+      description: `Created "${duplicate.name}"`,
+      variant: "success",
+    });
     router.push(`/characters/${duplicate.id}`);
   };
 
@@ -255,49 +281,209 @@ export function CharacterLibraryPage() {
       await createTemplateFromCharacter(templateCharacter.id, templateName.trim(), templateIcon);
       setTemplateDialogOpen(false);
       setTemplateCharacter(null);
+      toast({
+        title: "Template saved",
+        description: `"${templateName}" is now available for creating new characters.`,
+        variant: "success",
+      });
     } catch (error) {
       console.error("Failed to save template:", error);
+      toast({
+        title: "Failed to save template",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSavingTemplate(false);
     }
   };
 
   const handleExport = (character: Character) => {
-    const exportData = {
-      version: "PortableCharacterV1",
-      exportedAt: new Date().toISOString(),
-      character: {
-        name: character.name,
-        avatar: character.avatar,
-        tagline: character.tagline,
-        description: character.description,
-        personality: character.personality,
-        background: character.background,
-        lifeHistory: character.lifeHistory,
-        currentContext: character.currentContext,
-        toneStyle: character.toneStyle,
-        boundaries: character.boundaries,
-        roleRules: character.roleRules,
-        customInstructionsLocal: character.customInstructionsLocal,
-        tags: character.tags,
-        archetype: character.archetype,
-        defaultModelId: character.defaultModelId,
-        defaultTemperature: character.defaultTemperature,
-        nsfwEnabled: character.nsfwEnabled,
-        evolveEnabled: character.evolveEnabled,
-      },
-    };
+    const portableData = extractPortableFields(character);
+    const exportData = createPortableExport(portableData);
+    const markdown = portableToMarkdown(exportData);
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const blob = new Blob([markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${character.name.toLowerCase().replace(/\s+/g, "-")}-character.json`;
+    a.download = `${character.name.toLowerCase().replace(/\s+/g, "-")}-character.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    toast({
+      title: "Character exported",
+      description: `${character.name} saved to markdown.`,
+      variant: "success",
+    });
   };
+
+  const handleExportAll = () => {
+    const portableData = characters.map((c) => createPortableExport(extractPortableFields(c)));
+    const markdown = portableBatchToMarkdown(portableData);
+
+    const blob = new Blob([markdown], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `persona-characters-export-${new Date().toISOString().split("T")[0]}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "All characters exported",
+      description: `Exported ${characters.length} characters to markdown.`,
+      variant: "success",
+    });
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so same file can be selected again
+    event.target.value = "";
+
+    try {
+      const text = await file.text();
+      let data: unknown;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        try {
+          const docs = parsePortableMarkdownBatch(text);
+          data = docs.length === 1 ? docs[0] : docs;
+        } catch (mdErr) {
+          console.error("Markdown parse error:", mdErr);
+          toast({
+            title: "Invalid file",
+            description: "The file is not valid JSON or markdown export.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Try single character first
+      const singleValidation = validatePortableCharacter(data);
+      if (singleValidation.success) {
+        setImportPreviewData(singleValidation.data!);
+        setImportPreviewOpen(true);
+        return;
+      }
+
+      // Try batch import
+      const batchValidation = validatePortableCharacterBatch(
+        Array.isArray(data) ? data : (data as { characters?: unknown }).characters
+      );
+      if (batchValidation.success && batchValidation.data!.length > 0) {
+        setImportPreviewData(batchValidation.data!);
+        setImportPreviewOpen(true);
+        return;
+      }
+
+      const firstError = singleValidation.error?.issues[0];
+      toast({
+        title: "Invalid character format",
+        description: firstError
+          ? `${firstError.path.join(".")}: ${firstError.message}`
+          : "The file does not match the expected format.",
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("File read error:", error);
+      toast({
+        title: "Failed to read file",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleConfirmImport = useCallback(
+    async (
+      data: PortableCharacterV1 | PortableCharacterV1[],
+      renamedNames?: Map<number, string>
+    ) => {
+      // Prepare the data with any renamed names
+      let importPayload: unknown;
+      const isBatch = Array.isArray(data);
+
+      if (isBatch) {
+        // Apply renamed names to batch
+        const updatedData = data.map((item, index) => {
+          const newName = renamedNames?.get(index);
+          if (newName) {
+            return {
+              ...item,
+              character: { ...item.character, name: newName },
+            };
+          }
+          return item;
+        });
+        importPayload = updatedData;
+      } else {
+        // Apply renamed name to single
+        const newName = renamedNames?.get(0);
+        importPayload = newName
+          ? { ...data, character: { ...data.character, name: newName } }
+          : data;
+      }
+
+      // Send to import API
+      const response = await fetch("/api/characters/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(importPayload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast({
+          title: "Import failed",
+          description: error.error || "Failed to import character.",
+          variant: "destructive",
+        });
+        throw new Error(error.error);
+      }
+
+      const result = await response.json();
+
+      // Emit events and refresh
+      eventBus.emit(Events.CHARACTER_IMPORTED, result);
+      eventBus.emit(Events.CHARACTERS_CHANGED);
+      await refetch();
+
+      // Show success toast
+      if (result.batch) {
+        toast({
+          title: "Characters imported",
+          description: `Successfully imported ${result.imported} of ${result.total} characters.`,
+          variant: "success",
+        });
+      } else {
+        const description = result.renamed
+          ? `Imported as "${result.character.name}" (renamed from "${result.originalName}")`
+          : `${result.character.name} has been imported.`;
+
+        toast({
+          title: "Character imported",
+          description,
+          variant: "success",
+          action: {
+            label: "View",
+            onClick: () => router.push(`/characters/${result.character.id}`),
+          },
+        });
+      }
+    },
+    [refetch, router, toast]
+  );
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -316,12 +502,36 @@ export function CharacterLibraryPage() {
             </p>
           </div>
         </div>
-        <Button asChild>
-          <Link href="/characters/new" className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Character
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Hidden file input for import */}
+          <input
+            type="file"
+            id="import-character-input"
+            accept=".md,.markdown,.json"
+            onChange={(e) => void handleFileSelect(e)}
+            className="hidden"
+          />
+          {characters.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleExportAll} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export All
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => document.getElementById("import-character-input")?.click()}
+            className="gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+          <Button asChild>
+            <Link href="/characters/new" className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Character
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -376,12 +586,21 @@ export function CharacterLibraryPage() {
                   : "Create your first character to get started"}
               </p>
               {!searchQuery && activeFilter === "all" && (
-                <Button asChild variant="outline">
-                  <Link href="/characters/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Character
-                  </Link>
-                </Button>
+                <div className="flex items-center justify-center gap-2">
+                  <Button asChild variant="outline">
+                    <Link href="/characters/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Character
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => document.getElementById("import-character-input")?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import
+                  </Button>
+                </div>
               )}
             </div>
           ) : (
@@ -401,6 +620,14 @@ export function CharacterLibraryPage() {
           )}
         </div>
       </ScrollArea>
+
+      {/* Import Preview Modal */}
+      <ImportPreviewModal
+        open={importPreviewOpen}
+        onOpenChange={setImportPreviewOpen}
+        data={importPreviewData}
+        onConfirm={handleConfirmImport}
+      />
 
       {/* Save as Template Dialog */}
       <Sheet open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>

@@ -4,6 +4,7 @@ import postgres from "postgres";
 import { users, userSettings, characters } from "../lib/db/schema";
 import { DEV_USER_ID, DEV_USER_EMAIL, DEV_USER_PASSWORD } from "../lib/db/constants";
 import { hashPassword } from "../lib/auth/password";
+import { loadAllBuiltInCharacters } from "../lib/character-loader";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -13,58 +14,6 @@ if (!DATABASE_URL) {
 
 const client = postgres(DATABASE_URL);
 const db = drizzle(client);
-
-// Built-in characters with stable IDs for idempotent seeding
-const BUILT_IN_CHARACTERS = [
-  {
-    id: "00000000-0000-0000-0001-000000000001",
-    name: "Sam (Friend)",
-    tagline: "A supportive and friendly companion",
-    systemRole: "friendly companion",
-    description: "A supportive and friendly companion for daily conversations and brainstorming.",
-    personality:
-      "Warm, encouraging, and great at brainstorming. Uses casual language and occasional emojis.",
-    toneStyle: "Friendly, casual",
-  },
-  {
-    id: "00000000-0000-0000-0001-000000000002",
-    name: "Therapist",
-    tagline: "A calm, empathetic listener",
-    systemRole: "compassionate therapist",
-    description: "A calm, empathetic listener who helps you process thoughts and emotions.",
-    personality:
-      "Compassionate and non-judgmental. Uses techniques from CBT and mindfulness. Asks thoughtful questions.",
-    toneStyle: "Professional, warm",
-  },
-  {
-    id: "00000000-0000-0000-0001-000000000003",
-    name: "Coding Guru",
-    tagline: "An expert programmer",
-    systemRole: "senior software engineer",
-    description: "An expert programmer who helps debug, explain, and write code.",
-    personality:
-      "Knowledgeable across multiple languages and frameworks. Provides clear code examples and follows best practices.",
-    toneStyle: "Expert, concise",
-  },
-  {
-    id: "00000000-0000-0000-0001-000000000004",
-    name: "Creative Writer",
-    tagline: "A creative storyteller",
-    systemRole: "creative writer",
-    description: "A creative storyteller who helps with writing, editing, and ideation.",
-    personality: "Imaginative and inspiring. Helps craft compelling narratives and develop characters.",
-    toneStyle: "Creative, expressive",
-  },
-  {
-    id: "00000000-0000-0000-0001-000000000005",
-    name: "Data Analyst",
-    tagline: "An analytical mind",
-    systemRole: "data analyst",
-    description: "An analytical mind that helps interpret data and derive insights.",
-    personality: "Precise, methodical, and data-driven. Helps create visualizations and derive actionable insights.",
-    toneStyle: "Analytical, clear",
-  },
-];
 
 async function seed() {
   console.log("🌱 Seeding database...\n");
@@ -100,13 +49,39 @@ async function seed() {
     });
   console.log("✓ Upserted user settings");
 
+  // Load built-in characters (JSON preferred, markdown fallback)
+  console.log("\nLoading built-in characters from config/characters/...");
+  const builtInCharacters = await loadAllBuiltInCharacters();
+
+  if (builtInCharacters.length === 0) {
+    console.warn("⚠ No built-in characters found in config/characters/");
+  }
+
   // Upsert built-in characters (updates on re-run)
-  for (const char of BUILT_IN_CHARACTERS) {
+  for (const char of builtInCharacters) {
     await db
       .insert(characters)
       .values({
-        ...char,
+        id: char.id,
         userId: DEV_USER_ID,
+        name: char.name,
+        tagline: char.tagline,
+        systemRole: char.systemRole,
+        description: char.description,
+        personality: char.personality,
+        background: char.background,
+        lifeHistory: char.lifeHistory,
+        currentContext: char.currentContext,
+        toneStyle: char.toneStyle,
+        boundaries: char.boundaries,
+        roleRules: char.roleRules,
+        customInstructionsLocal: char.customInstructionsLocal,
+        tags: char.tags,
+        archetype: char.archetype,
+        defaultModelId: char.defaultModelId,
+        defaultTemperature: char.defaultTemperature ?? 0.7,
+        nsfwEnabled: char.nsfwEnabled ?? false,
+        evolveEnabled: char.evolveEnabled ?? false,
         isBuiltIn: true,
       })
       .onConflictDoUpdate({
@@ -117,7 +92,19 @@ async function seed() {
           systemRole: char.systemRole,
           description: char.description,
           personality: char.personality,
+          background: char.background,
+          lifeHistory: char.lifeHistory,
+          currentContext: char.currentContext,
           toneStyle: char.toneStyle,
+          boundaries: char.boundaries,
+          roleRules: char.roleRules,
+          customInstructionsLocal: char.customInstructionsLocal,
+          tags: char.tags,
+          archetype: char.archetype,
+          defaultModelId: char.defaultModelId,
+          defaultTemperature: char.defaultTemperature ?? 0.7,
+          nsfwEnabled: char.nsfwEnabled ?? false,
+          evolveEnabled: char.evolveEnabled ?? false,
           updatedAt: new Date(),
         },
       });

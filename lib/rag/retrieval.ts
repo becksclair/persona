@@ -43,6 +43,14 @@ export async function retrieveRelevantMemories(options: {
   );
   const minScore = RAGConfigSvc.getMinSimilarityScore();
 
+  // Guard against malformed characterId to avoid UUID cast errors / injection attempts
+  const isValidUuid =
+    typeof characterId === "string" &&
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      characterId
+    );
+  const useCharacterId = !!characterId && isValidUuid;
+
   // Generate query embedding
   let queryEmbedding: number[];
   try {
@@ -99,8 +107,21 @@ export async function retrieveRelevantMemories(options: {
         AND visibility_policy != 'exclude_from_rag'
         AND (
           (owner_type = 'user' AND owner_id = ${userId}::uuid)
-          ${characterId ? sql`OR (owner_type = 'character' AND owner_id = ${characterId}::uuid)` : sql``}
-          ${characterId ? sql`OR (owner_type = 'relationship' AND owner_id = ${userId}::uuid AND ${characterId} = ANY(tags))` : sql``}
+          ${
+            useCharacterId
+              ? sql`OR (owner_type = 'character' AND owner_id = ${characterId}::uuid)`
+              : sql``
+          }
+          ${
+            useCharacterId
+              ? sql`
+                OR (
+                  owner_type = 'relationship'
+                  AND owner_id = ${userId}::uuid
+                  AND tags @> ${JSON.stringify([characterId])}::jsonb
+                )`
+              : sql``
+          }
         )
         ${archivedIds.length > 0 
           ? sql`AND NOT (source_type = 'message' AND source_id IN (

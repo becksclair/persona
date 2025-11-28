@@ -133,11 +133,11 @@
 
 ### 2.4 Import / Export & Portability
 
-- [ ] Define `PortableCharacterV1` export format (persona_fields, behavior_rules, custom instructions, operational/model profile, flags) aligned with engine spec.
-- [ ] Implement "Export character" to file.
-- [ ] Implement "Import character" from file with validation and conflict handling.
-- [ ] Document how to combine character exports with vector DB backups for portability.
-- [ ] Store built-in character templates as markdown files under `config/characters` and ensure seeding/import flows use that location.
+- [x] Define `PortableCharacterV1` export format (persona_fields, behavior_rules, custom instructions, operational/model profile, flags) aligned with engine spec.
+- [x] Implement "Export character" to file.
+- [x] Implement "Import character" from file with validation and conflict handling (auto-rename on conflict).
+- [x] Document how to combine character exports with vector DB backups for portability (see docs/portability.md).
+- [x] Store built-in character templates as markdown files under `config/characters` and ensure seeding/import flows use that location.
 
 ### 2.5 Versioning & Checkpoints
 
