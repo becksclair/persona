@@ -42,3 +42,7 @@ next-env.d.ts
 
 # drizzle
 /drizzle
+
+# models (keep scripts, ignore large model files)
+models/*.gguf
+tools/

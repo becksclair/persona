@@ -125,7 +125,7 @@ export interface ApiSuccessResponse<T> {
 }
 
 /**
- * Paginated response wrapper.
+ * Paginated response wrapper (offset-based).
  */
 export interface PaginatedResponse<T> {
   data: T[];
@@ -134,5 +134,19 @@ export interface PaginatedResponse<T> {
     page: number;
     pageSize: number;
     hasMore: boolean;
+  };
+}
+
+/**
+ * Cursor-based paginated response (for infinite scroll).
+ * Uses timestamp cursors for efficient keyset pagination.
+ */
+export interface CursorPaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    nextCursor: string | null;
+    prevCursor: string | null;
+    hasMore: boolean;
+    limit: number;
   };
 }

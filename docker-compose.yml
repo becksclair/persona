@@ -1,4 +1,19 @@
 services:
+  koboldcpp:
+    image: koboldai/koboldcpp:latest
+    container_name: persona-embeddings
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./models:/models
+    entrypoint: ["/bin/sh", "/models/start-embeddings.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/v1/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   postgres:
     image: pgvector/pgvector:pg18
     container_name: persona-db

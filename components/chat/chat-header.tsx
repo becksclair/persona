@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Download, FileJson, FileText, Settings, Loader2, Brain, Sparkles } from "lucide-react";
 import type { ConversationRagOverrides, RAGMode } from "@/lib/types";
 import type { Character } from "./types";
-import { useMemoryInspectorStore } from "@/lib/memory-inspector-store";
+import { useMemoryInspectorStore } from "@/lib/store";
 
 interface ChatHeaderProps {
   character: Character | undefined;

@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/components/auth-provider";
 import { useConversations, type Conversation } from "@/lib/hooks/use-conversations";
-import { useChatStore } from "@/lib/chat-store";
+import { useChatStore } from "@/lib/store";
 
 const THEME_OPTIONS = [
   { value: "light", icon: Sun, label: "Light" },

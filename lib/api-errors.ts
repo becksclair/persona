@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 
 /**
  * Structured API error response format.
@@ -8,7 +9,25 @@ export interface ApiError {
   code: string;
   message: string;
   retryable: boolean;
+  requestId: string;
   details?: Record<string, unknown>;
+}
+
+/**
+ * Generate a unique request ID for tracing.
+ * Format: req_<timestamp>_<random>
+ */
+export function generateRequestId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = randomBytes(4).toString("hex");
+  return `req_${timestamp}_${random}`;
+}
+
+/**
+ * Extract request ID from headers or generate a new one.
+ */
+export function getOrCreateRequestId(req: Request): string {
+  return req.headers.get("x-request-id") ?? generateRequestId();
 }
 
 /**
@@ -46,59 +65,96 @@ export const ErrorCodes = {
 } as const;
 
 /**
- * Create a structured error response.
+ * Create a structured error response with request ID for tracing.
  */
 export function apiError(
   code: string,
   message: string,
   status: number,
-  options?: { retryable?: boolean; details?: Record<string, unknown> },
+  options?: {
+    retryable?: boolean;
+    details?: Record<string, unknown>;
+    requestId?: string;
+  },
 ): NextResponse<ApiError> {
+  const requestId = options?.requestId ?? generateRequestId();
+
+  // Log error with context for debugging
+  console.error(`[API Error] ${code}: ${message}`, {
+    requestId,
+    status,
+    details: options?.details,
+  });
+
   return NextResponse.json(
     {
       code,
       message,
       retryable: options?.retryable ?? false,
+      requestId,
       details: options?.details,
     },
-    { status },
+    {
+      status,
+      headers: {
+        "x-request-id": requestId,
+      },
+    },
   );
 }
 
-// Common error responses
+/**
+ * Error context passed to error helpers for request tracing.
+ */
+interface ErrorContext {
+  requestId?: string;
+  details?: Record<string, unknown>;
+}
+
+// Common error responses with optional request context
 export const Errors = {
-  unauthorized: () => apiError(ErrorCodes.UNAUTHORIZED, "Authentication required", 401),
+  unauthorized: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.UNAUTHORIZED, "Authentication required", 401, ctx),
 
-  forbidden: () =>
-    apiError(ErrorCodes.FORBIDDEN, "You don't have permission to access this resource", 403),
+  forbidden: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.FORBIDDEN, "You don't have permission to access this resource", 403, ctx),
 
-  notFound: (resource = "Resource") => apiError(ErrorCodes.NOT_FOUND, `${resource} not found`, 404),
+  notFound: (resource = "Resource", ctx?: ErrorContext) =>
+    apiError(ErrorCodes.NOT_FOUND, `${resource} not found`, 404, ctx),
 
-  conversationNotFound: () =>
-    apiError(ErrorCodes.CONVERSATION_NOT_FOUND, "Conversation not found", 404),
+  conversationNotFound: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.CONVERSATION_NOT_FOUND, "Conversation not found", 404, ctx),
 
-  characterNotFound: () => apiError(ErrorCodes.CHARACTER_NOT_FOUND, "Character not found", 404),
+  characterNotFound: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.CHARACTER_NOT_FOUND, "Character not found", 404, ctx),
 
-  invalidJson: () => apiError(ErrorCodes.INVALID_JSON, "Invalid JSON body", 400),
+  invalidJson: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.INVALID_JSON, "Invalid JSON body", 400, ctx),
 
-  invalidRequest: (message: string) => apiError(ErrorCodes.INVALID_REQUEST, message, 400),
+  invalidRequest: (message: string, ctx?: ErrorContext) =>
+    apiError(ErrorCodes.INVALID_REQUEST, message, 400, ctx),
 
-  cannotModifyBuiltin: () =>
-    apiError(ErrorCodes.CANNOT_MODIFY_BUILTIN, "Cannot modify built-in character", 403),
+  cannotModifyBuiltin: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.CANNOT_MODIFY_BUILTIN, "Cannot modify built-in character", 403, ctx),
 
-  cannotDeleteBuiltin: () =>
-    apiError(ErrorCodes.CANNOT_DELETE_BUILTIN, "Cannot delete built-in character", 403),
+  cannotDeleteBuiltin: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.CANNOT_DELETE_BUILTIN, "Cannot delete built-in character", 403, ctx),
 
-  internal: (message = "An unexpected error occurred") =>
-    apiError(ErrorCodes.INTERNAL_ERROR, message, 500, { retryable: true }),
+  internal: (message = "An unexpected error occurred", ctx?: ErrorContext) =>
+    apiError(ErrorCodes.INTERNAL_ERROR, message, 500, { retryable: true, ...ctx }),
 
-  fileNotFound: () => apiError(ErrorCodes.FILE_NOT_FOUND, "Knowledge base file not found", 404),
+  fileNotFound: (ctx?: ErrorContext) =>
+    apiError(ErrorCodes.FILE_NOT_FOUND, "Knowledge base file not found", 404, ctx),
 
-  fileTooLarge: (maxSize: string) =>
-    apiError(ErrorCodes.FILE_TOO_LARGE, `File exceeds maximum size (${maxSize})`, 413),
+  fileTooLarge: (maxSize: string, ctx?: ErrorContext) =>
+    apiError(ErrorCodes.FILE_TOO_LARGE, `File exceeds maximum size (${maxSize})`, 413, ctx),
 
-  indexingFailed: (reason?: string) =>
+  indexingFailed: (reason?: string, ctx?: ErrorContext) =>
     apiError(ErrorCodes.INDEXING_FAILED, reason ?? "File indexing failed", 500, {
       retryable: true,
+      ...ctx,
     }),
+
+  databaseError: (message = "Database operation failed", ctx?: ErrorContext) =>
+    apiError(ErrorCodes.DATABASE_ERROR, message, 500, { retryable: true, ...ctx }),
 };

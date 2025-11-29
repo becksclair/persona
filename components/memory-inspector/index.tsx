@@ -4,7 +4,7 @@ import {
   useMemoryInspectorStore,
   type MessageMemoryRecord,
   type MemorySnippet,
-} from "@/lib/memory-inspector-store";
+} from "@/lib/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

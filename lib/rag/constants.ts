@@ -86,13 +86,17 @@ export const RETRY_CONFIG = {
 
 /**
  * LM Studio configuration
+ * Supports separate embedding provider via EMBEDDING_BASE_URL (e.g., KoboldCpp)
  */
 export const LM_STUDIO_CONFIG = {
   get baseUrl(): string {
     return process.env.LM_STUDIO_BASE_URL || "http://localhost:1234/v1";
   },
+  get embeddingBaseUrl(): string {
+    return process.env.EMBEDDING_BASE_URL || this.baseUrl;
+  },
   get embeddingsEndpoint(): string {
-    return `${this.baseUrl}/embeddings`;
+    return `${this.embeddingBaseUrl}/embeddings`;
   },
   get modelsEndpoint(): string {
     return `${this.baseUrl}/models`;

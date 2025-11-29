@@ -15,6 +15,7 @@ export interface RetrievedMemory {
   content: string;
   sourceType: string;
   sourceId: string | null;
+  sourceFileName?: string;
   similarity: number;
   tags: string[] | null;
 }
@@ -92,67 +93,71 @@ export async function retrieveRelevantMemories(options: {
     // Execute parameterized similarity search
     // Using sql template with proper parameter binding
     // __low_priority items get a 0.15 similarity penalty to rank them lower
+    // Left join with knowledge_base_files to get source file names
     const LOW_PRIORITY_PENALTY = 0.15;
     const results = await db.execute<{
       id: string;
       content: string;
       source_type: string;
       source_id: string | null;
+      source_file_name: string | null;
       tags: string[] | null;
       similarity: number;
     }>(sql`
       SELECT
-        id,
-        content,
-        source_type,
-        source_id,
-        tags,
-        1 - (embedding <=> ${embeddingLiteral}::vector)
-          - CASE WHEN tags @> '["__low_priority"]'::jsonb THEN ${LOW_PRIORITY_PENALTY} ELSE 0 END
+        m.id,
+        m.content,
+        m.source_type,
+        m.source_id,
+        COALESCE(kbf.file_name, NULL) as source_file_name,
+        m.tags,
+        1 - (m.embedding <=> ${embeddingLiteral}::vector)
+          - CASE WHEN m.tags @> '["__low_priority"]'::jsonb THEN ${LOW_PRIORITY_PENALTY} ELSE 0 END
           as similarity
-      FROM memory_items
+      FROM memory_items m
+      LEFT JOIN knowledge_base_files kbf ON m.source_type = 'file' AND m.source_id = kbf.id::text
       WHERE
-        embedding IS NOT NULL
-        AND visibility_policy != 'exclude_from_rag'
+        m.embedding IS NOT NULL
+        AND m.visibility_policy != 'exclude_from_rag'
         AND (
-          (owner_type = 'user' AND owner_id = ${userId}::uuid)
+          (m.owner_type = 'user' AND m.owner_id = ${userId}::uuid)
           ${
             useCharacterId
-              ? sql`OR (owner_type = 'character' AND owner_id = ${characterId}::uuid)`
+              ? sql`OR (m.owner_type = 'character' AND m.owner_id = ${characterId}::uuid)`
               : sql``
           }
           ${
             useCharacterId
               ? sql`
                 OR (
-                  owner_type = 'relationship'
-                  AND owner_id = ${userId}::uuid
-                  AND tags @> ${JSON.stringify([characterId])}::jsonb
+                  m.owner_type = 'relationship'
+                  AND m.owner_id = ${userId}::uuid
+                  AND m.tags @> ${JSON.stringify([characterId])}::jsonb
                 )`
               : sql``
           }
         )
         ${
           archivedIds.length > 0
-            ? sql`AND NOT (source_type = 'message' AND source_id IN (
+            ? sql`AND NOT (m.source_type = 'message' AND m.source_id IN (
               SELECT id FROM messages WHERE conversation_id = ANY(${archivedIds}::uuid[])
             ))`
             : sql``
         }
         ${
           pausedFileIds.length > 0
-            ? sql`AND NOT (source_type = 'file' AND source_id = ANY(${pausedFileIds}::uuid[]))`
+            ? sql`AND NOT (m.source_type = 'file' AND m.source_id = ANY(${pausedFileIds}::uuid[]))`
             : sql``
         }
         ${
           activeTagFilters.length > 0
-            ? sql`AND tags @> ${JSON.stringify(activeTagFilters)}::jsonb`
+            ? sql`AND m.tags @> ${JSON.stringify(activeTagFilters)}::jsonb`
             : sql``
         }
-        AND 1 - (embedding <=> ${embeddingLiteral}::vector) >= ${minScore}
+        AND 1 - (m.embedding <=> ${embeddingLiteral}::vector) >= ${minScore}
       ORDER BY
-        embedding <=> ${embeddingLiteral}::vector
-        + CASE WHEN tags @> '["__low_priority"]'::jsonb THEN ${LOW_PRIORITY_PENALTY} ELSE 0 END
+        m.embedding <=> ${embeddingLiteral}::vector
+        + CASE WHEN m.tags @> '["__low_priority"]'::jsonb THEN ${LOW_PRIORITY_PENALTY} ELSE 0 END
       LIMIT ${topK}
     `);
 
@@ -162,6 +167,7 @@ export async function retrieveRelevantMemories(options: {
         content: string;
         source_type: string;
         source_id: string | null;
+        source_file_name: string | null;
         tags: string[] | null;
         similarity: number;
       }>
@@ -170,6 +176,7 @@ export async function retrieveRelevantMemories(options: {
       content: row.content,
       sourceType: row.source_type,
       sourceId: row.source_id,
+      sourceFileName: row.source_file_name ?? undefined,
       similarity: row.similarity,
       tags: row.tags,
     }));
@@ -182,23 +189,65 @@ export async function retrieveRelevantMemories(options: {
 }
 
 /**
+ * Escape XML special characters in text content
+ */
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+/**
  * Format retrieved memories for prompt injection.
- * Returns a compact "Relevant past info" block.
+ * Uses structured XML format with metadata for better LLM comprehension.
+ *
+ * Format:
+ * <retrieved_memories count="N">
+ *   <memory id="uuid" source="filename" type="file" relevance="0.87">
+ *     Content here...
+ *   </memory>
+ * </retrieved_memories>
  */
 export function formatMemoriesForPrompt(memories: RetrievedMemory[]): string {
   if (memories.length === 0) return "";
 
-  const formatted = memories
-    .map((m, i) => `[${i + 1}] ${m.content.slice(0, 300)}${m.content.length > 300 ? "..." : ""}`)
+  const memoryTags = memories
+    .map((m) => {
+      // Build attribute string
+      const attrs: string[] = [`id="${m.id}"`];
+
+      // Source info - prefer filename, fallback to type
+      if (m.sourceFileName) {
+        attrs.push(`source="${escapeXml(m.sourceFileName)}"`);
+      }
+      attrs.push(`type="${m.sourceType}"`);
+
+      // Relevance score (rounded to 2 decimals)
+      attrs.push(`relevance="${m.similarity.toFixed(2)}"`);
+
+      // Tags (exclude internal tags starting with __)
+      const visibleTags = m.tags?.filter((t) => !t.startsWith("__")) ?? [];
+      if (visibleTags.length > 0) {
+        attrs.push(`tags="${escapeXml(visibleTags.join(","))}"`);
+      }
+
+      // Truncate content for prompt efficiency (preserve full content for high-relevance items)
+      const maxLength = m.similarity > 0.8 ? 500 : 300;
+      const content =
+        m.content.length > maxLength ? `${m.content.slice(0, maxLength)}...` : m.content;
+
+      return `  <memory ${attrs.join(" ")}>\n${escapeXml(content)}\n  </memory>`;
+    })
     .join("\n");
 
-  return `<relevant_context>
-The following relevant information was retrieved from your knowledge base:
+  return `<retrieved_memories count="${memories.length}">
+${memoryTags}
+</retrieved_memories>
 
-${formatted}
-
-Use this context naturally in your response when relevant.
-</relevant_context>`;
+Use the retrieved memories above when relevant to the conversation. Reference them naturally without mentioning the XML structure.`;
 }
 
 /**

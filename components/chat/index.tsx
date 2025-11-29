@@ -3,8 +3,7 @@
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useAppStore } from "@/lib/store";
-import { useChatStore } from "@/lib/chat-store";
+import { useAppStore, useChatStore, useMemoryInspectorStore } from "@/lib/store";
 import { useCharacters } from "@/lib/hooks/use-characters";
 import { useSettings } from "@/lib/hooks/use-settings";
 import { useCopy } from "@/lib/hooks/use-copy";
@@ -17,7 +16,6 @@ import type { ConversationRagOverrides, RAGMode, ModelSettings } from "@/lib/typ
 import { computeEffectiveRagConfig } from "@/lib/rag/effective-config";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { MemoryInspectorPanel } from "@/components/memory-inspector";
-import { useMemoryInspectorStore } from "@/lib/memory-inspector-store";
 
 import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";

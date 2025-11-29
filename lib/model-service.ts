@@ -1,6 +1,6 @@
-import { openai, createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import modelsConfig from "@/config/models.json";
+import { ProviderRegistry, type ProviderStatus, type ProviderType } from "./providers";
 
 // ─────────────────────────────────────────────────────────────
 // Schema Definitions
@@ -57,13 +57,8 @@ export interface ModelAvailability {
   error?: string;
 }
 
-export interface ProviderStatus {
-  provider: ModelProvider;
-  available: boolean;
-  baseUrl?: string;
-  models?: string[];
-  error?: string;
-}
+// Re-export ProviderStatus from providers module
+export type { ProviderStatus } from "./providers";
 
 // ─────────────────────────────────────────────────────────────
 // ModelService - Centralized model management
@@ -71,7 +66,6 @@ export interface ProviderStatus {
 
 class ModelServiceImpl {
   private config: ModelsConfig | null = null;
-  private lmStudioProvider: ReturnType<typeof createOpenAI> | null = null;
 
   // ─────────────────────────────────────────────────────────────
   // Configuration
@@ -193,7 +187,7 @@ class ModelServiceImpl {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Provider Management
+  // Provider Management (delegated to ProviderRegistry)
   // ─────────────────────────────────────────────────────────────
 
   /**
@@ -209,89 +203,21 @@ class ModelServiceImpl {
   }
 
   /**
-   * Get AI SDK provider instance
+   * Get AI SDK provider instance via the provider registry.
    */
   getProviderInstance(provider: ModelProvider, modelId: string) {
-    if (provider === "lmstudio") {
-      if (!this.lmStudioProvider) {
-        this.lmStudioProvider = createOpenAI({
-          baseURL: this.getLmStudioBaseUrl(),
-          apiKey: "lm-studio", // LM Studio doesn't require a real API key
-        });
-      }
-      return this.lmStudioProvider(modelId);
-    }
-
-    // Default to OpenAI
-    return openai(modelId);
+    return ProviderRegistry.getModel(provider as ProviderType, modelId);
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Availability Checks
+  // Availability Checks (delegated to ProviderRegistry)
   // ─────────────────────────────────────────────────────────────
-
-  /**
-   * Check if LM Studio is running and get loaded models
-   */
-  async checkLmStudioStatus(): Promise<ProviderStatus> {
-    const baseUrl = this.getLmStudioBaseUrl();
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-
-      const response = await fetch(`${baseUrl}/models`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        return {
-          provider: "lmstudio",
-          available: false,
-          baseUrl,
-          error: `HTTP ${response.status}`,
-        };
-      }
-
-      const data = await response.json();
-      const models = data.data?.map((m: { id: string }) => m.id) ?? [];
-
-      return {
-        provider: "lmstudio",
-        available: true,
-        baseUrl,
-        models,
-      };
-    } catch (error) {
-      return {
-        provider: "lmstudio",
-        available: false,
-        baseUrl,
-        error: error instanceof Error ? error.message : "Connection failed",
-      };
-    }
-  }
-
-  /**
-   * Check if OpenAI API is configured
-   */
-  checkOpenAIStatus(): ProviderStatus {
-    const hasKey = !!process.env.OPENAI_API_KEY;
-    return {
-      provider: "openai",
-      available: hasKey,
-      error: hasKey ? undefined : "OPENAI_API_KEY not configured",
-    };
-  }
 
   /**
    * Check availability of all providers
    */
   async checkAllProviders(): Promise<ProviderStatus[]> {
-    const lmStudio = await this.checkLmStudioStatus();
-
-    return [this.checkOpenAIStatus(), lmStudio];
+    return ProviderRegistry.checkAllProviders();
   }
 
   /**

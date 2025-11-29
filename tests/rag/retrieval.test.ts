@@ -175,10 +175,13 @@ describe("RAG Retrieval", () => {
 
       const result = formatMemoriesForPrompt(memories);
 
-      expect(result).toContain("<relevant_context>");
-      expect(result).toContain("</relevant_context>");
-      expect(result).toContain("[1]");
+      // New XML format
+      expect(result).toContain("<retrieved_memories");
+      expect(result).toContain("</retrieved_memories>");
+      expect(result).toContain("<memory");
       expect(result).toContain("This is the memory content.");
+      expect(result).toContain('relevance="0.85"');
+      expect(result).toContain('tags="test"');
     });
 
     it("formats multiple memories with indices", () => {
@@ -211,23 +214,26 @@ describe("RAG Retrieval", () => {
 
       const result = formatMemoriesForPrompt(memories);
 
-      expect(result).toContain("[1]");
-      expect(result).toContain("[2]");
-      expect(result).toContain("[3]");
+      // New XML format uses <memory> tags with attributes
+      expect(result).toContain("<retrieved_memories");
+      expect(result).toContain("</retrieved_memories>");
+      expect(result).toContain("<memory");
+      expect(result).toContain("</memory>");
       expect(result).toContain("First memory");
       expect(result).toContain("Second memory");
       expect(result).toContain("Third memory");
     });
 
     it("truncates long content with ellipsis", () => {
-      const longContent = "A".repeat(500);
+      // Use 600 chars to exceed even high-relevance threshold (500)
+      const longContent = "A".repeat(600);
       const memories: RetrievedMemory[] = [
         {
           id: "1",
           content: longContent,
           sourceType: "file",
           sourceId: null,
-          similarity: 0.9,
+          similarity: 0.7, // Lower relevance uses 300 char limit
           tags: null,
         },
       ];
@@ -235,7 +241,8 @@ describe("RAG Retrieval", () => {
       const result = formatMemoriesForPrompt(memories);
 
       expect(result).toContain("...");
-      expect(result.length).toBeLessThan(longContent.length + 200);
+      // Total output should be much smaller than raw content
+      expect(result.length).toBeLessThan(longContent.length);
     });
 
     it("includes context instructions", () => {
@@ -252,8 +259,8 @@ describe("RAG Retrieval", () => {
 
       const result = formatMemoriesForPrompt(memories);
 
-      expect(result).toContain("relevant information");
-      expect(result).toContain("knowledge base");
+      // New format has updated instructions
+      expect(result).toContain("retrieved memories");
       expect(result).toContain("naturally");
     });
   });

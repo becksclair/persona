@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, useChatStore } from "@/lib/store";
 import { ModelService, type ModelDefinition, type ProviderStatus } from "@/lib/model-service";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCharacters } from "@/lib/hooks/use-characters";
-import { useChatStore } from "@/lib/chat-store";
 import { useKnowledgeBase, formatFileSize, getStatusStyle } from "@/lib/hooks/use-knowledge-base";
 
 // Avatar color mapping
