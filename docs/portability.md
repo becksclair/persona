@@ -133,9 +133,12 @@ A complete Persona backup includes:
 
 | Component | Location | Contains |
 |-----------|----------|----------|
-| PostgreSQL Database | Docker volume | Characters, conversations, messages, embeddings |
+| PostgreSQL Database | Docker volume `persona_pgdata` | Characters, conversations, messages, embeddings |
 | Knowledge Base Files | `uploads/` directory | Uploaded documents |
 | Character Exports | Manual exports | Individual character markdown files (`*.md`) |
+| Environment Config | `.env` file | Database URL, API keys, service URLs |
+
+> **Note:** The KoboldCpp embedding model (BGE-M3) is stored in Docker volume `koboldcpp_models` and will auto-download on first run if missing (~438MB). No need to back up.
 
 ### Database Backup
 
@@ -143,17 +146,17 @@ A complete Persona backup includes:
 
 ```bash
 # Backup entire database
-docker exec persona-postgres pg_dump -U postgres persona_dev > backup_full.sql
+docker exec persona-db pg_dump -U persona persona_dev > backup_full.sql
 
 # With timestamp
-docker exec persona-postgres pg_dump -U postgres persona_dev > backup_$(date +%Y%m%d_%H%M%S).sql
+docker exec persona-db pg_dump -U persona persona_dev > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 #### Knowledge Base Only (Vectors + File Metadata)
 
 ```bash
 # Export just the RAG-related tables
-docker exec persona-postgres pg_dump -U postgres \
+docker exec persona-db pg_dump -U persona \
   -t memory_items \
   -t knowledge_base_files \
   persona_dev > backup_knowledge_base.sql
@@ -163,7 +166,7 @@ docker exec persona-postgres pg_dump -U postgres \
 
 ```bash
 # Export character and template tables
-docker exec persona-postgres pg_dump -U postgres \
+docker exec persona-db pg_dump -U persona \
   -t characters \
   -t character_templates \
   persona_dev > backup_characters.sql
@@ -173,11 +176,11 @@ docker exec persona-postgres pg_dump -U postgres \
 
 ```bash
 # Restore full database (WARNING: overwrites existing data)
-docker exec -i persona-postgres psql -U postgres -d persona_dev < backup_full.sql
+docker exec -i persona-db psql -U persona -d persona_dev < backup_full.sql
 
 # Restore to a fresh database
-docker exec persona-postgres createdb -U postgres persona_restored
-docker exec -i persona-postgres psql -U postgres -d persona_restored < backup_full.sql
+docker exec persona-db createdb -U persona persona_restored
+docker exec -i persona-db psql -U persona -d persona_restored < backup_full.sql
 ```
 
 ### File System Backup
@@ -212,7 +215,7 @@ Follow these steps to migrate Persona to a new machine:
 
 ```bash
 # Export database
-docker exec persona-postgres pg_dump -U postgres persona_dev > migration_db.sql
+docker exec persona-db pg_dump -U persona persona_dev > migration_db.sql
 
 # Archive uploads
 tar -czvf migration_uploads.tar.gz uploads/
@@ -227,7 +230,7 @@ Copy these to the new machine:
 - `migration_db.sql`
 - `migration_uploads.tar.gz`
 - `migration_config.tar.gz`
-- `.env.local` (environment variables)
+- `.env` (environment variables)
 
 #### 3. Setup New Machine
 
@@ -240,13 +243,13 @@ cd persona
 pnpm install
 
 # Copy environment file
-cp /path/to/migration/.env.local .env.local
+cp /path/to/migration/.env .env
 
-# Start database
-docker compose up -d postgres
+# Start all services (PostgreSQL + KoboldCpp)
+docker compose up -d
 
-# Wait for database to be ready
-sleep 5
+# Wait for services to be ready (KoboldCpp downloads model on first run)
+docker logs -f persona-embeddings  # Watch until "Starting Kobold API"
 ```
 
 #### 4. Restore Data
@@ -255,7 +258,7 @@ sleep 5
 
 ```bash
 # Restore database
-docker exec -i persona-postgres psql -U postgres -d persona_dev < migration_db.sql
+docker exec -i persona-db psql -U persona -d persona_dev < migration_db.sql
 
 # Restore uploads
 tar -xzvf migration_uploads.tar.gz
@@ -267,17 +270,20 @@ tar -xzvf migration_config.tar.gz
 #### 5. Verify Migration
 
 ```bash
-# Run migrations (if any pending)
-pnpm db:migrate
+# Check database schema
+pnpm db:push
 
 # Start development server
 pnpm dev
+
+# Start background worker (separate terminal)
+pnpm worker:dev
 
 # Check:
 # - Characters appear in library
 # - Conversations are intact
 # - Knowledge base files are accessible
-# - RAG retrieval works
+# - RAG retrieval works (test embedding: curl http://localhost:5001/api/v1/models)
 ```
 
 ### Partial Migration (Characters Only)
@@ -299,14 +305,37 @@ For migrating just characters without conversation history:
 
 ```bash
 # Check if PostgreSQL is running
-docker ps | grep postgres
+docker ps | grep persona-db
 
 # Check logs
-docker logs persona-postgres
+docker logs persona-db
 
 # Verify connection
-docker exec persona-postgres psql -U postgres -c "SELECT 1"
+docker exec persona-db psql -U persona -c "SELECT 1"
 ```
+
+#### KoboldCpp / Embeddings Issues
+
+```bash
+# Check if KoboldCpp is running
+docker ps | grep persona-embeddings
+
+# Check logs (first run downloads ~438MB model)
+docker logs persona-embeddings
+
+# Test embeddings API
+curl http://localhost:5001/api/v1/models
+
+# Test embedding generation
+curl -X POST http://localhost:5001/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model": "bge-m3", "input": "test"}'
+```
+
+If KoboldCpp fails to start:
+1. Check Docker has enough memory (needs ~2GB)
+2. Delete the model volume and let it re-download: `docker volume rm koboldcpp_models`
+3. Check firewall isn't blocking port 5001
 
 #### Missing Embeddings After Restore
 
@@ -317,6 +346,7 @@ If RAG retrieval doesn't work after restore:
    SELECT * FROM pg_extension WHERE extname = 'vector';
    ```
 3. Re-index knowledge base files if needed
+4. Verify KoboldCpp is responding: `curl http://localhost:5001/api/v1/models`
 
 #### File Permission Issues
 

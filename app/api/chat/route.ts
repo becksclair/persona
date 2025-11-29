@@ -1,4 +1,4 @@
-import { streamText, convertToModelMessages } from "ai";
+import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { db } from "@/lib/db";
 import { characters, conversations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -102,16 +102,15 @@ export async function POST(req: Request) {
   if (effectiveEnableRAG && user) {
     try {
       // Extract the last user message as the query
-      const lastUserMessage = [...messages]
+      // Type assertion needed since Zod passthrough returns base type
+      type MessageWithParts = { role: string; parts?: Array<{ type: string; text?: string }> };
+      const lastUserMessage = ([...messages] as MessageWithParts[])
         .reverse()
-        .find(
-          (m: { role: string; parts?: Array<{ type: string; text?: string }> }) =>
-            m.role === "user",
-        );
+        .find((m) => m.role === "user");
       const queryText =
         lastUserMessage?.parts
-          ?.filter((p: { type: string }) => p.type === "text")
-          ?.map((p: { text?: string }) => p.text)
+          ?.filter((p) => p.type === "text")
+          ?.map((p) => p.text)
           ?.join(" ") ?? "";
 
       if (queryText) {
@@ -161,7 +160,8 @@ export async function POST(req: Request) {
     const model = ModelService.getProviderInstance(provider, modelId);
 
     // AI SDK v5: Convert UIMessage[] to ModelMessage[] for streamText
-    const modelMessages = convertToModelMessages(messages);
+    // Cast validated messages to UIMessage[] (passthrough schema preserves SDK fields)
+    const modelMessages = convertToModelMessages(messages as unknown as UIMessage[]);
 
     const result = streamText({
       model,

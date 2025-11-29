@@ -29,7 +29,12 @@ interface EmbeddedChunk {
  * This runs synchronously in the request for MVP.
  * TODO: Refactor to async job queue in later phase.
  */
-export async function indexFile(fileId: string): Promise<IndexingResult> {
+export async function indexFile(fileId: string, signal?: AbortSignal): Promise<IndexingResult> {
+  // Check for cancellation
+  if (signal?.aborted) {
+    return { fileId, success: false, chunksCreated: 0, totalChunks: 0, error: "Operation cancelled" };
+  }
+
   // Get file info
   const [file] = await db
     .select()
@@ -39,6 +44,11 @@ export async function indexFile(fileId: string): Promise<IndexingResult> {
 
   if (!file) {
     return { fileId, success: false, chunksCreated: 0, totalChunks: 0, error: "File not found" };
+  }
+
+  // Check for cancellation before starting expensive operations
+  if (signal?.aborted) {
+    return { fileId, success: false, chunksCreated: 0, totalChunks: 0, error: "Operation cancelled" };
   }
 
   // Check embedding service availability before starting
@@ -65,6 +75,9 @@ export async function indexFile(fileId: string): Promise<IndexingResult> {
 
   try {
     // Extract text and chunk
+    if (signal?.aborted) {
+      throw new Error("Operation cancelled during processing");
+    }
     const chunks = await processFileForIndexing(file.storagePath, file.fileType);
 
     if (chunks.length === 0) {
@@ -86,6 +99,10 @@ export async function indexFile(fileId: string): Promise<IndexingResult> {
     const failedChunks: number[] = [];
 
     for (const chunk of chunks) {
+      if (signal?.aborted) {
+        throw new Error("Operation cancelled during embedding generation");
+      }
+      
       try {
         const embeddingResult = await generateEmbedding(chunk.content);
         embeddedChunks.push({ chunk, embedding: embeddingResult.embedding });
@@ -110,6 +127,10 @@ export async function indexFile(fileId: string): Promise<IndexingResult> {
     }
 
     // Use transaction for atomic delete + insert
+    if (signal?.aborted) {
+      throw new Error("Operation cancelled before database transaction");
+    }
+    
     await db.transaction(async (tx) => {
       // Delete existing memory items for this file (for re-indexing)
       await tx

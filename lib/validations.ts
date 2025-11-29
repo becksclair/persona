@@ -90,8 +90,16 @@ export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 // Chat Request Schema
 // ─────────────────────────────────────────────────────────────
 
+// Chat message schema - validates role and passes through to AI SDK
+// AI SDK handles the complex multimodal content validation internally
+export const chatMessageSchema = z
+  .object({
+    role: z.enum(["user", "assistant", "system"]),
+  })
+  .passthrough(); // Allow AI SDK-specific fields to pass through
+
 export const chatRequestSchema = z.object({
-  messages: z.array(z.any()).min(1, "At least one message is required"),
+  messages: z.array(chatMessageSchema).min(1, "At least one message is required"),
   conversationId: z.string().uuid().optional(),
   characterId: z.string().uuid().optional(),
   modelSettings: z

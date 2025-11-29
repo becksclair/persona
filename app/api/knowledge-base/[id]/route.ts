@@ -4,7 +4,9 @@ import { knowledgeBaseFiles } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { Errors } from "@/lib/api-errors";
-import { FileStorage, deleteFileMemoryItems, indexFile, getFileMemoryItemCount } from "@/lib/rag";
+import { FileStorage, deleteFileMemoryItems, getFileMemoryItemCount } from "@/lib/rag";
+import { enqueueIndexFile } from "@/lib/jobs";
+import { initApp } from "@/lib/startup";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -51,6 +53,9 @@ export async function GET(_req: Request, context: RouteContext) {
  * - tags?: string[] (required for updateTags, optional for others)
  */
 export async function PATCH(req: Request, context: RouteContext) {
+  // Ensure app services are initialized
+  await initApp();
+
   const user = await getCurrentUser();
   if (!user) {
     return Errors.unauthorized();
@@ -87,10 +92,67 @@ export async function PATCH(req: Request, context: RouteContext) {
         .set({ status: newStatus, updatedAt: new Date() })
         .where(eq(knowledgeBaseFiles.id, id));
     } else if (action === "reindex") {
-      // Re-run indexing pipeline
-      const result = await indexFile(id);
-      if (!result.success) {
-        return Errors.internal(result.error ?? "Re-indexing failed");
+      // Use a transaction to ensure atomicity
+      const result = await db.transaction(async (tx) => {
+        // First, check current status and only update if not already pending/processing
+        const [current] = await tx
+          .select()
+          .from(knowledgeBaseFiles)
+          .where(eq(knowledgeBaseFiles.id, id))
+          .limit(1);
+
+        // If already in progress, return early with current status
+        if (current.status === 'pending' || current.status === 'processing') {
+          return { updated: current, jobId: null };
+        }
+
+        // Store original status before updating
+        const originalStatus = current.status;
+        const originalUpdatedAt = current.updatedAt;
+
+        // Update to pending status
+        const [updated] = await tx
+          .update(knowledgeBaseFiles)
+          .set({ status: "pending", updatedAt: new Date() })
+          .where(eq(knowledgeBaseFiles.id, id))
+          .returning();
+
+        let jobId: string | null = null;
+        try {
+          // PgBoss is already initialized by initApp()
+          jobId = await enqueueIndexFile(id, user.userId, { priority: 10 }); // Higher priority for explicit reindex
+        } catch (error) {
+          // Restore original status if enqueue fails
+          await tx
+            .update(knowledgeBaseFiles)
+            .set({
+              status: originalStatus,
+              updatedAt: originalUpdatedAt || new Date()
+            })
+            .where(eq(knowledgeBaseFiles.id, id));
+
+          console.error("[knowledge-base/id] Failed to enqueue reindex job:", error);
+          throw new Error("Failed to enqueue reindex job");
+        }
+
+        return { updated, jobId };
+      });
+
+      // Return appropriate response based on whether a new job was created
+      if (result.jobId) {
+        return NextResponse.json(
+          { ...result.updated, jobId: result.jobId, chunkCount: 0 },
+          { status: 202 }
+        );
+      } else {
+        return NextResponse.json(
+          {
+            ...result.updated,
+            message: 'Reindex already in progress',
+            jobId: null
+          },
+          { status: 200 }
+        );
       }
     } else if (action === "updateTags") {
       // Dedicated tag update - no status change

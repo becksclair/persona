@@ -43,7 +43,7 @@ class ProviderRegistryImpl {
         // TODO: Implement Ollama provider
         throw new Error("Ollama provider not yet implemented");
       default:
-        throw new Error(`Unknown provider type: ${type}`);
+        throw new Error(`Unknown provider type: ${type as string}`);
     }
   }
 

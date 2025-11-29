@@ -4,7 +4,9 @@ import { knowledgeBaseFiles, characters } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { Errors } from "@/lib/api-errors";
-import { FileStorage, getMimeType, RAGConfigSvc, indexFile } from "@/lib/rag";
+import { FileStorage, getMimeType, RAGConfigSvc } from "@/lib/rag";
+import { enqueueIndexFile } from "@/lib/jobs";
+import { initApp } from "@/lib/startup";
 
 /**
  * POST /api/knowledge-base/upload
@@ -16,6 +18,9 @@ import { FileStorage, getMimeType, RAGConfigSvc, indexFile } from "@/lib/rag";
  * - tags?: string (comma-separated)
  */
 export async function POST(req: Request) {
+  // Ensure app services are initialized
+  await initApp();
+
   const user = await getCurrentUser();
   if (!user) {
     return Errors.unauthorized();
@@ -80,23 +85,16 @@ export async function POST(req: Request) {
       })
       .returning();
 
-    // Start indexing (synchronous for MVP)
-    // TODO: Move to background job queue in later phase
-    const indexResult = await indexFile(kbFile.id);
-
-    // Refetch to get updated status
-    const [updatedFile] = await db
-      .select()
-      .from(knowledgeBaseFiles)
-      .where(eq(knowledgeBaseFiles.id, kbFile.id))
-      .limit(1);
+    // Enqueue indexing job (async via pg-boss)
+    // PgBoss is already initialized by initApp()
+    const jobId = await enqueueIndexFile(kbFile.id, user.userId);
 
     return NextResponse.json(
       {
-        file: updatedFile,
-        indexing: indexResult,
+        file: kbFile,
+        jobId,
       },
-      { status: 201 },
+      { status: 202 }, // Accepted - indexing in progress
     );
   } catch (error) {
     console.error("[knowledge-base/upload] POST error:", error);

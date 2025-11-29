@@ -6,13 +6,16 @@ services:
     ports:
       - "5001:5001"
     volumes:
-      - ./models:/models
-    entrypoint: ["/bin/sh", "/models/start-embeddings.sh"]
+      - koboldcpp_models:/workspace
+    environment:
+      - KCPP_EMBEDMODEL=https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q4_K_M.gguf
+      - KCPP_DONT_TUNNEL=true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/api/v1/models"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 120s
 
   postgres:
     image: pgvector/pgvector:pg18
@@ -35,3 +38,4 @@ services:
 
 volumes:
   persona_pgdata:
+  koboldcpp_models:

@@ -33,6 +33,7 @@
 ### 1.1 Chats & Sessions
 
 - [x] Add Docker Compose configuration for PostgreSQL 18.x with pgvector extension enabled (volumes, ports, basic auth).
+- [x] Add Docker Compose configuration for KoboldCpp embeddings server (BGE-M3 model, port 5001, auto-download on first run).
 - [x] Create separate development and test databases (e.g. `persona_dev`, `persona_test`) and configure connection URLs via environment variables.
 - [x] Install and configure DrizzleORM for PostgreSQL (client, schema registration, migration runner).
 - [x] Define DB schema for Conversation + Message using Drizzle models matching engine spec (user_id, character_id, timestamps, context tags, meta fields for tokens/provider/tool calls, etc.).
@@ -149,8 +150,8 @@
 
 ### Background Jobs (spillover)
 
-- [ ] Introduce lightweight job queue abstraction.
-- [ ] Move KB indexing (currently sync on upload) onto the job queue.
+- [x] Introduce lightweight job queue abstraction (pg-boss).
+- [x] Move KB indexing (currently sync on upload) onto the job queue.
 - [ ] Add snapshot-related jobs (create/guard/restore) to the queue for long-running work.
 
 ---
@@ -168,9 +169,9 @@
 
 ### 3.2 Memory Inspector Lite
 
-- [ ] Add developer drawer showing RAG snippets used for last N replies.
-- [ ] Show file + source metadata for each snippet (schema supports `memoryItems.sourceId/sourceType`, no UI).
-- [ ] Implement "snippet was wrong/misleading" action that lowers priority or excludes it.
+- [x] Add developer drawer showing RAG snippets used for last N replies.
+- [x] Show file + source metadata for each snippet (schema supports `memoryItems.sourceId/sourceType`, no UI).
+- [x] Implement "snippet was wrong/misleading" action that lowers priority or excludes it.
 
 ### 3.3 Forgetting Tools
 

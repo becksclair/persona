@@ -22,15 +22,17 @@ import { db } from "@/lib/db";
 import * as SnapshotsRoute from "@/app/api/characters/[id]/snapshots/route";
 import * as RestoreRoute from "@/app/api/characters/[id]/snapshots/[snapshotId]/restore/route";
 
-const mockGetCurrentUser = getCurrentUser as unknown as vi.Mock;
+type MockFunction = ReturnType<typeof vi.fn>;
+
+const mockGetCurrentUser = getCurrentUser as unknown as MockFunction;
 const {
   select: mockSelect,
   insert: mockInsert,
   update: mockUpdate,
 } = db as unknown as {
-  select: vi.Mock;
-  insert: vi.Mock;
-  update: vi.Mock;
+  select: MockFunction;
+  insert: MockFunction;
+  update: MockFunction;
 };
 
 function buildRequest(url: string, method = "GET", body?: unknown) {
