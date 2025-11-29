@@ -159,23 +159,26 @@
 
 ### 3.1 Knowledge Base Management
 
-- [ ] Add knowledge-base management view/tab per character.
-- [ ] Show all files and their tags (Work, Personal, Code, Docs, etc.).
-- [ ] Allow toggling inclusion per chat (e.g. "use only Work files for this conversation").
-- [ ] Implement global per-character toggles: "Use RAG heavily / lightly / ignore".
+- [x] Show all files and their tags in sidebar KB panel (name, size, chunks, status badges, tag pills).
+- [x] Allow toggling inclusion per chat via tag-based filtering (stored in `conversations.ragOverrides.tagFilters`).
+- [x] Implement global per-character toggles: "Use RAG heavily / lightly / ignore" (stored in `characters.ragMode`).
+- [x] File actions: Pause/Resume, Re-index, Hard delete with embeddings.
+- [x] Add dedicated knowledge-base management view/tab per character (beyond sidebar UI).
+- [x] Define preset tag categories (Work, Personal, Code, Docs) with management UI.
 
 ### 3.2 Memory Inspector Lite
 
 - [ ] Add developer drawer showing RAG snippets used for last N replies.
-- [ ] Show file + source metadata for each snippet.
+- [ ] Show file + source metadata for each snippet (schema supports `memoryItems.sourceId/sourceType`, no UI).
 - [ ] Implement "snippet was wrong/misleading" action that lowers priority or excludes it.
 
 ### 3.3 Forgetting Tools
 
-- [ ] Add per-conversation "Forget this conversation" action.
-- [ ] On forget: delete messages + embeddings and enqueue recalibration job.
-- [ ] Add per-file remove/purge actions for vector store chunks.
-- [ ] Ensure RAG + cognitive layers respect deletions.
+- [x] Add per-file remove/purge actions for vector store chunks (`deleteFileMemoryItems()` in indexing pipeline).
+- [ ] Add per-conversation "Forget this conversation" UI action.
+- [ ] On conversation forget: delete associated embeddings (TODO exists in code, not implemented).
+- [ ] Implement recalibration background job for memory consolidation post-deletion.
+- [ ] Ensure RAG retrieval respects `visibilityPolicy` field for exclusions.
 
 ---
 

@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Loader2,
   Users,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
@@ -183,6 +184,7 @@ export function SidebarLeft() {
     useChatStore();
   const pathname = usePathname();
   const isOnCharactersPage = pathname?.startsWith("/characters");
+  const isOnKnowledgeBasePage = pathname?.startsWith("/knowledge-base");
 
   // Filter conversations by search query
   const activeConvs = useMemo(() => {
@@ -297,6 +299,17 @@ export function SidebarLeft() {
           <Link href="/characters">
             <Users className="h-4 w-4" />
             Characters
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant={isOnKnowledgeBasePage ? "secondary" : "outline"}
+          className="w-full justify-center gap-2"
+          size="sm"
+        >
+          <Link href="/knowledge-base">
+            <Database className="h-4 w-4" />
+            Knowledge Base
           </Link>
         </Button>
       </div>

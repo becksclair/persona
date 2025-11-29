@@ -44,11 +44,11 @@ export async function GET(_req: Request, context: RouteContext) {
 
 /**
  * PATCH /api/knowledge-base/[id]
- * Update file status (pause, resume) or re-index
+ * Update file status (pause, resume, reindex) or tags
  *
  * Body:
- * - action: 'pause' | 'resume' | 'reindex'
- * - tags?: string[] (optional, to update tags)
+ * - action: 'pause' | 'resume' | 'reindex' | 'updateTags'
+ * - tags?: string[] (required for updateTags, optional for others)
  */
 export async function PATCH(req: Request, context: RouteContext) {
   const user = await getCurrentUser();
@@ -92,10 +92,17 @@ export async function PATCH(req: Request, context: RouteContext) {
       if (!result.success) {
         return Errors.internal(result.error ?? "Re-indexing failed");
       }
-    }
-
-    // Update tags if provided
-    if (tags !== undefined) {
+    } else if (action === "updateTags") {
+      // Dedicated tag update - no status change
+      if (!Array.isArray(tags)) {
+        return Errors.invalidRequest("Tags must be an array");
+      }
+      await db
+        .update(knowledgeBaseFiles)
+        .set({ tags, updatedAt: new Date() })
+        .where(eq(knowledgeBaseFiles.id, id));
+    } else if (tags !== undefined) {
+      // Legacy: update tags alongside other actions
       await db
         .update(knowledgeBaseFiles)
         .set({ tags, updatedAt: new Date() })
