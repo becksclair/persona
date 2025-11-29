@@ -142,7 +142,8 @@ export function parseCharacterJson(content: string): BuiltInCharacterData {
     customInstructionsLocal: data.customInstructionsLocal ?? null,
     tags: Array.isArray(data.tags) ? data.tags : null,
     defaultModelId: data.defaultModelId ?? null,
-    defaultTemperature: typeof data.defaultTemperature === "number" ? data.defaultTemperature : null,
+    defaultTemperature:
+      typeof data.defaultTemperature === "number" ? data.defaultTemperature : null,
     nsfwEnabled: data.nsfwEnabled === true,
     evolveEnabled: data.evolveEnabled === true,
     personality: data.personality ?? null,

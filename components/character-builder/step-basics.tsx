@@ -26,7 +26,13 @@ interface StepBasicsProps {
   onEditTemplate?: (template: CharacterTemplate) => void;
 }
 
-export function StepBasics({ onEnhance, enhancingField, templates = [], onDeleteTemplate, onEditTemplate }: StepBasicsProps) {
+export function StepBasics({
+  onEnhance,
+  enhancingField,
+  templates = [],
+  onDeleteTemplate,
+  onEditTemplate,
+}: StepBasicsProps) {
   const {
     register,
     watch,
@@ -47,9 +53,8 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
   const filteredTemplates = useMemo(() => {
     if (!templateSearch.trim()) return templates;
     const q = templateSearch.toLowerCase();
-    return templates.filter((t) =>
-      t.name.toLowerCase().includes(q) ||
-      t.description?.toLowerCase().includes(q)
+    return templates.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q),
     );
   }, [templates, templateSearch]);
 
@@ -77,7 +82,10 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
   const handleTagToggle = (tag: string) => {
     const currentTags = tags || [];
     if (currentTags.includes(tag)) {
-      setValue("tags", currentTags.filter((t) => t !== tag));
+      setValue(
+        "tags",
+        currentTags.filter((t) => t !== tag),
+      );
     } else {
       setValue("tags", [...currentTags, tag]);
     }
@@ -87,9 +95,7 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold mb-1">Basic Information</h2>
-        <p className="text-sm text-muted-foreground">
-          Define the core identity of your character
-        </p>
+        <p className="text-sm text-muted-foreground">Define the core identity of your character</p>
       </div>
 
       {/* Avatar Preview */}
@@ -109,12 +115,8 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
             placeholder="https://example.com/avatar.png"
             className="mt-1"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Leave empty to use generated avatar
-          </p>
-          {errors.avatar && (
-            <p className="text-xs text-destructive">{errors.avatar.message}</p>
-          )}
+          <p className="text-xs text-muted-foreground mt-1">Leave empty to use generated avatar</p>
+          {errors.avatar && <p className="text-xs text-destructive">{errors.avatar.message}</p>}
         </div>
       </div>
 
@@ -126,13 +128,8 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
         <p className="text-xs text-muted-foreground">
           The character&apos;s name as it will appear in conversations
         </p>
-        <Input
-          {...register("name")}
-          placeholder="e.g., Luna, Max, Dr. Smith"
-        />
-        {errors.name && (
-          <p className="text-xs text-destructive">{errors.name.message}</p>
-        )}
+        <Input {...register("name")} placeholder="e.g., Luna, Max, Dr. Smith" />
+        {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
       </div>
 
       {/* Tagline */}
@@ -163,7 +160,7 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
                 "flex flex-col items-center gap-1 p-3 rounded-lg border transition-all",
                 archetype === id
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-border hover:border-primary/50"
+                  : "border-border hover:border-primary/50",
               )}
             >
               <span className="text-xl">{arch.icon}</span>
@@ -206,7 +203,9 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
                   className="w-full flex flex-col items-center gap-1 p-3 rounded-lg border border-border hover:border-primary/50 transition-all"
                 >
                   <span className="text-xl">{tmpl.icon || "📝"}</span>
-                  <span className="text-xs font-medium text-center truncate w-full">{tmpl.name}</span>
+                  <span className="text-xs font-medium text-center truncate w-full">
+                    {tmpl.name}
+                  </span>
                 </button>
                 {/* Action buttons on hover */}
                 <div className="absolute -top-1.5 -right-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -266,7 +265,7 @@ export function StepBasics({ onEnhance, enhancingField, templates = [], onDelete
                   "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                   isSelected
                     ? "bg-primary text-primary-foreground"
-                    : "bg-accent text-accent-foreground hover:bg-accent/80"
+                    : "bg-accent text-accent-foreground hover:bg-accent/80",
                 )}
               >
                 {tag}

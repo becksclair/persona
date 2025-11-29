@@ -153,7 +153,10 @@ function CharacterCard({
                   <Archive className="h-4 w-4 mr-2" />
                   Archive
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="text-destructive focus:text-destructive"
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -206,7 +209,20 @@ function CharacterCard({
 }
 
 // Common emoji icons for templates
-const TEMPLATE_ICONS = ["📝", "💡", "⭐", "🎯", "🔥", "💎", "🌟", "✨", "🎨", "🧠", "💼", "❤️"] as const;
+const TEMPLATE_ICONS = [
+  "📝",
+  "💡",
+  "⭐",
+  "🎯",
+  "🔥",
+  "💎",
+  "🌟",
+  "✨",
+  "🎨",
+  "🧠",
+  "💼",
+  "❤️",
+] as const;
 
 export function CharacterLibraryPage() {
   const router = useRouter();
@@ -241,7 +257,7 @@ export function CharacterLibraryPage() {
         (c) =>
           c.name.toLowerCase().includes(q) ||
           c.tagline?.toLowerCase().includes(q) ||
-          c.description?.toLowerCase().includes(q)
+          c.description?.toLowerCase().includes(q),
       );
     }
 
@@ -378,12 +394,21 @@ export function CharacterLibraryPage() {
       }
 
       // Try batch import
-      const batchValidation = validatePortableCharacterBatch(
-        Array.isArray(data) ? data : (data as { characters?: unknown }).characters
-      );
-      if (batchValidation.success && batchValidation.data!.length > 0) {
-        setImportPreviewData(batchValidation.data!);
-        setImportPreviewOpen(true);
+      const batchSource = Array.isArray(data)
+        ? data
+        : (data as { characters?: unknown }).characters;
+      const batchValidation = validatePortableCharacterBatch(batchSource);
+      if (batchValidation.success) {
+        if (batchValidation.data && batchValidation.data.length > 0) {
+          setImportPreviewData(batchValidation.data);
+          setImportPreviewOpen(true);
+        } else if (Array.isArray(batchSource)) {
+          toast({
+            title: "No characters found",
+            description: "The file does not contain any characters to import.",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
@@ -408,7 +433,7 @@ export function CharacterLibraryPage() {
   const handleConfirmImport = useCallback(
     async (
       data: PortableCharacterV1 | PortableCharacterV1[],
-      renamedNames?: Map<number, string>
+      renamedNames?: Map<number, string>,
     ) => {
       // Prepare the data with any renamed names
       let importPayload: unknown;
@@ -482,7 +507,7 @@ export function CharacterLibraryPage() {
         });
       }
     },
-    [refetch, router, toast]
+    [refetch, router, toast],
   );
 
   return (
@@ -557,7 +582,9 @@ export function CharacterLibraryPage() {
                   onClick={() => setActiveFilter(filter.id)}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                    isActive ? filter.color : "bg-accent/50 text-muted-foreground hover:text-foreground"
+                    isActive
+                      ? filter.color
+                      : "bg-accent/50 text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -635,8 +662,8 @@ export function CharacterLibraryPage() {
           <SheetHeader>
             <SheetTitle>Save as Template</SheetTitle>
             <SheetDescription>
-              Create a reusable template from {templateCharacter?.name}. You can use this template to
-              quickly create new characters with the same settings.
+              Create a reusable template from {templateCharacter?.name}. You can use this template
+              to quickly create new characters with the same settings.
             </SheetDescription>
           </SheetHeader>
 
@@ -665,7 +692,7 @@ export function CharacterLibraryPage() {
                       "w-10 h-10 rounded-lg border text-xl flex items-center justify-center transition-all",
                       templateIcon === icon
                         ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
+                        : "border-border hover:border-primary/50",
                     )}
                   >
                     {icon}

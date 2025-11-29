@@ -37,9 +37,7 @@ export function FieldWithAI({
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-sm font-medium">{label}</Label>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          )}
+          {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
         {onEnhance && (
           <Button
@@ -60,12 +58,7 @@ export function FieldWithAI({
         )}
       </div>
       {multiline ? (
-        <Textarea
-          {...register}
-          placeholder={placeholder}
-          rows={rows}
-          className="resize-none"
-        />
+        <Textarea {...register} placeholder={placeholder} rows={rows} className="resize-none" />
       ) : (
         <Input {...register} placeholder={placeholder} />
       )}

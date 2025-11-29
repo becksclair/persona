@@ -18,9 +18,10 @@ export function PreviewPanel() {
   const defaultTemperature = watch("defaultTemperature");
   const nsfwEnabled = watch("nsfwEnabled");
 
-  const archetypeName = archetype && archetype !== "custom"
-    ? ARCHETYPES[archetype as keyof typeof ARCHETYPES]?.name
-    : "Custom";
+  const archetypeName =
+    archetype && archetype !== "custom"
+      ? ARCHETYPES[archetype as keyof typeof ARCHETYPES]?.name
+      : "Custom";
 
   return (
     <div className="w-80 border-l border-border bg-muted/30 flex flex-col">
@@ -36,19 +37,14 @@ export function PreviewPanel() {
               <Avatar className="h-12 w-12 ring-2 ring-background">
                 <AvatarImage src={avatar || undefined} />
                 <AvatarFallback
-                  className={cn(
-                    getAvatarColor(name || ""),
-                    "text-white text-lg font-semibold"
-                  )}
+                  className={cn(getAvatarColor(name || ""), "text-white text-lg font-semibold")}
                 >
                   {name?.[0] || "?"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold truncate">{name || "Unnamed"}</h3>
-                {tagline && (
-                  <p className="text-sm text-muted-foreground truncate">{tagline}</p>
-                )}
+                {tagline && <p className="text-sm text-muted-foreground truncate">{tagline}</p>}
               </div>
             </div>
             <p className="text-sm text-muted-foreground line-clamp-3">
@@ -82,10 +78,12 @@ export function PreviewPanel() {
             </div>
             <div className="flex justify-between py-1 border-b border-border/50">
               <span>NSFW</span>
-              <span className={cn(
-                "font-medium",
-                nsfwEnabled ? "text-purple-400" : "text-muted-foreground"
-              )}>
+              <span
+                className={cn(
+                  "font-medium",
+                  nsfwEnabled ? "text-purple-400" : "text-muted-foreground",
+                )}
+              >
                 {nsfwEnabled ? "Enabled" : "Disabled"}
               </span>
             </div>
@@ -107,7 +105,15 @@ export function PreviewPanel() {
   );
 }
 
-function FieldStatus({ label, filled, required }: { label: string; filled: boolean; required?: boolean }) {
+function FieldStatus({
+  label,
+  filled,
+  required,
+}: {
+  label: string;
+  filled: boolean;
+  required?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">

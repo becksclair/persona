@@ -67,13 +67,10 @@ export const PortableCharacterV1Schema = z
     exportedAt: z.string().datetime(),
     character: PortableCharacterDataSchema,
   })
-  .refine(
-    (data) => isVersionSupported(data.schemaVersion ?? 1),
-    {
-      message: "Unsupported schemaVersion",
-      path: ["schemaVersion"],
-    }
-  );
+  .refine((data) => isVersionSupported(data.schemaVersion ?? 1), {
+    message: "Unsupported schemaVersion",
+    path: ["schemaVersion"],
+  });
 
 export type PortableCharacterV1 = z.infer<typeof PortableCharacterV1Schema>;
 
@@ -137,9 +134,7 @@ export function isVersionSupported(version: number): boolean {
  * Currently a no-op since we only have v1, but provides the structure
  * for future migrations.
  */
-export function migrateToCurrentVersion(
-  data: PortableCharacterV1
-): PortableCharacterV1 {
+export function migrateToCurrentVersion(data: PortableCharacterV1): PortableCharacterV1 {
   const version = data.schemaVersion ?? 1;
 
   if (!isVersionSupported(version)) {
@@ -163,9 +158,7 @@ export function migrateToCurrentVersion(
 /**
  * Create a portable export object from character data.
  */
-export function createPortableExport(
-  character: PortableCharacterData
-): PortableCharacterV1 {
+export function createPortableExport(character: PortableCharacterData): PortableCharacterV1 {
   return {
     version: PORTABLE_CHARACTER_VERSION,
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -178,7 +171,7 @@ export function createPortableExport(
  * Create a batch export from multiple characters.
  */
 export function createPortableBatchExport(
-  characters: PortableCharacterData[]
+  characters: PortableCharacterData[],
 ): PortableCharacterBatch {
   return characters.map((character) => createPortableExport(character));
 }
@@ -211,9 +204,7 @@ interface CharacterLike {
  * Extract portable fields from a full character object.
  * Strips out non-portable fields like id, userId, timestamps, etc.
  */
-export function extractPortableFields(
-  character: CharacterLike
-): PortableCharacterData {
+export function extractPortableFields(character: CharacterLike): PortableCharacterData {
   return {
     name: character.name,
     avatar: character.avatar || null,
@@ -226,15 +217,15 @@ export function extractPortableFields(
     currentContext: character.currentContext || null,
     toneStyle: character.toneStyle || null,
     boundaries: character.boundaries || null,
-  roleRules: character.roleRules || null,
-  customInstructionsLocal: character.customInstructionsLocal || null,
-  tags: character.tags || null,
-  defaultModelId: character.defaultModelId || null,
-  defaultTemperature: character.defaultTemperature ?? null,
-  maxContextWindow: character.maxContextWindow ?? null,
-  systemRole: character.systemRole || null,
-  nsfwEnabled: character.nsfwEnabled ?? null,
-  evolveEnabled: character.evolveEnabled ?? null,
+    roleRules: character.roleRules || null,
+    customInstructionsLocal: character.customInstructionsLocal || null,
+    tags: character.tags || null,
+    defaultModelId: character.defaultModelId || null,
+    defaultTemperature: character.defaultTemperature ?? null,
+    maxContextWindow: character.maxContextWindow ?? null,
+    systemRole: character.systemRole || null,
+    nsfwEnabled: character.nsfwEnabled ?? null,
+    evolveEnabled: character.evolveEnabled ?? null,
   };
 }
 
@@ -319,7 +310,10 @@ function splitMarkdownDocuments(md: string): string[] {
   return parts.length > 0 ? parts : [md];
 }
 
-function buildPortableFromFrontmatter(frontmatter: Record<string, unknown>, body: string): PortableCharacterV1 {
+function buildPortableFromFrontmatter(
+  frontmatter: Record<string, unknown>,
+  body: string,
+): PortableCharacterV1 {
   const sectionPersonality = extractSection(body, SECTION_HEADERS.personality);
   const sectionDescription = extractSection(body, SECTION_HEADERS.description);
   const sectionBackground = extractSection(body, SECTION_HEADERS.background);
@@ -328,28 +322,55 @@ function buildPortableFromFrontmatter(frontmatter: Record<string, unknown>, body
 
   const character: PortableCharacterData = {
     name: (frontmatter.name as string) ?? (frontmatter.character as CharacterLike)?.name,
-    avatar: (frontmatter.avatar as string) ?? (frontmatter.character as CharacterLike)?.avatar ?? null,
-    tagline: (frontmatter.tagline as string) ?? (frontmatter.character as CharacterLike)?.tagline ?? null,
-    archetype: (frontmatter.archetype as string) ?? (frontmatter.character as CharacterLike)?.archetype ?? null,
-    systemRole: (frontmatter.systemRole as string) ?? (frontmatter.character as CharacterLike)?.systemRole ?? null,
+    avatar:
+      (frontmatter.avatar as string) ?? (frontmatter.character as CharacterLike)?.avatar ?? null,
+    tagline:
+      (frontmatter.tagline as string) ?? (frontmatter.character as CharacterLike)?.tagline ?? null,
+    archetype:
+      (frontmatter.archetype as string) ??
+      (frontmatter.character as CharacterLike)?.archetype ??
+      null,
+    systemRole:
+      (frontmatter.systemRole as string) ??
+      (frontmatter.character as CharacterLike)?.systemRole ??
+      null,
     description:
       sectionDescription ??
-      ((frontmatter.description as string) ?? (frontmatter.character as CharacterLike)?.description ?? null),
+      (frontmatter.description as string) ??
+      (frontmatter.character as CharacterLike)?.description ??
+      null,
     personality:
       sectionPersonality ??
-      ((frontmatter.personality as string) ?? (frontmatter.character as CharacterLike)?.personality ?? null),
+      (frontmatter.personality as string) ??
+      (frontmatter.character as CharacterLike)?.personality ??
+      null,
     background:
       sectionBackground ??
-      ((frontmatter.background as string) ?? (frontmatter.character as CharacterLike)?.background ?? null),
+      (frontmatter.background as string) ??
+      (frontmatter.character as CharacterLike)?.background ??
+      null,
     lifeHistory:
       sectionLifeHistory ??
-      ((frontmatter.lifeHistory as string) ?? (frontmatter.character as CharacterLike)?.lifeHistory ?? null),
+      (frontmatter.lifeHistory as string) ??
+      (frontmatter.character as CharacterLike)?.lifeHistory ??
+      null,
     currentContext:
       sectionCurrentContext ??
-      ((frontmatter.currentContext as string) ?? (frontmatter.character as CharacterLike)?.currentContext ?? null),
-    toneStyle: (frontmatter.toneStyle as string) ?? (frontmatter.character as CharacterLike)?.toneStyle ?? null,
-    boundaries: (frontmatter.boundaries as string) ?? (frontmatter.character as CharacterLike)?.boundaries ?? null,
-    roleRules: (frontmatter.roleRules as string) ?? (frontmatter.character as CharacterLike)?.roleRules ?? null,
+      (frontmatter.currentContext as string) ??
+      (frontmatter.character as CharacterLike)?.currentContext ??
+      null,
+    toneStyle:
+      (frontmatter.toneStyle as string) ??
+      (frontmatter.character as CharacterLike)?.toneStyle ??
+      null,
+    boundaries:
+      (frontmatter.boundaries as string) ??
+      (frontmatter.character as CharacterLike)?.boundaries ??
+      null,
+    roleRules:
+      (frontmatter.roleRules as string) ??
+      (frontmatter.character as CharacterLike)?.roleRules ??
+      null,
     customInstructionsLocal:
       (frontmatter.customInstructionsLocal as string) ??
       (frontmatter.character as CharacterLike)?.customInstructionsLocal ??
@@ -359,25 +380,35 @@ function buildPortableFromFrontmatter(frontmatter: Record<string, unknown>, body
       ((frontmatter.character as CharacterLike)?.tags as string[] | null) ??
       null,
     defaultModelId:
-      (frontmatter.defaultModelId as string) ?? (frontmatter.character as CharacterLike)?.defaultModelId ?? null,
+      (frontmatter.defaultModelId as string) ??
+      (frontmatter.character as CharacterLike)?.defaultModelId ??
+      null,
     defaultTemperature:
       (typeof frontmatter.defaultTemperature === "number"
         ? (frontmatter.defaultTemperature as number)
-        : undefined) ?? (frontmatter.character as CharacterLike)?.defaultTemperature ?? null,
+        : undefined) ??
+      (frontmatter.character as CharacterLike)?.defaultTemperature ??
+      null,
     maxContextWindow:
       (typeof frontmatter.maxContextWindow === "number"
         ? (frontmatter.maxContextWindow as number)
-        : undefined) ?? (frontmatter.character as CharacterLike)?.maxContextWindow ?? null,
+        : undefined) ??
+      (frontmatter.character as CharacterLike)?.maxContextWindow ??
+      null,
     nsfwEnabled:
-      frontmatter.nsfwEnabled === true || (frontmatter.character as CharacterLike)?.nsfwEnabled === true
+      frontmatter.nsfwEnabled === true ||
+      (frontmatter.character as CharacterLike)?.nsfwEnabled === true
         ? true
-        : frontmatter.nsfwEnabled === false || (frontmatter.character as CharacterLike)?.nsfwEnabled === false
+        : frontmatter.nsfwEnabled === false ||
+            (frontmatter.character as CharacterLike)?.nsfwEnabled === false
           ? false
           : null,
     evolveEnabled:
-      frontmatter.evolveEnabled === true || (frontmatter.character as CharacterLike)?.evolveEnabled === true
+      frontmatter.evolveEnabled === true ||
+      (frontmatter.character as CharacterLike)?.evolveEnabled === true
         ? true
-        : frontmatter.evolveEnabled === false || (frontmatter.character as CharacterLike)?.evolveEnabled === false
+        : frontmatter.evolveEnabled === false ||
+            (frontmatter.character as CharacterLike)?.evolveEnabled === false
           ? false
           : null,
   } as PortableCharacterData;

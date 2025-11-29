@@ -24,8 +24,8 @@ export async function GET(_req: Request, context: RouteContext) {
       .where(
         and(
           eq(characters.id, id),
-          or(eq(characters.userId, user.userId), eq(characters.isBuiltIn, true))
-        )
+          or(eq(characters.userId, user.userId), eq(characters.isBuiltIn, true)),
+        ),
       )
       .limit(1);
 
@@ -84,6 +84,7 @@ export async function PATCH(req: Request, context: RouteContext) {
       "evolveEnabled",
       "nsfwEnabled",
       "isArchived",
+      "ragMode",
     ];
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };

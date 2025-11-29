@@ -139,7 +139,7 @@ describe("PortableCharacterDataSchema", () => {
   });
 });
 
-  describe("PortableCharacterV1Schema", () => {
+describe("PortableCharacterV1Schema", () => {
   it("should validate complete export structure", () => {
     const validExport = {
       version: "PortableCharacterV1",
@@ -164,29 +164,29 @@ describe("PortableCharacterDataSchema", () => {
     expect(result.success).toBe(false);
   });
 
-    it("should require exportedAt to be ISO datetime", () => {
-      const invalidDate = {
-        version: "PortableCharacterV1",
-        exportedAt: "not-a-date",
-        character: { name: "Test" },
-      };
+  it("should require exportedAt to be ISO datetime", () => {
+    const invalidDate = {
+      version: "PortableCharacterV1",
+      exportedAt: "not-a-date",
+      character: { name: "Test" },
+    };
 
-      const result = PortableCharacterV1Schema.safeParse(invalidDate);
-      expect(result.success).toBe(false);
-    });
-
-    it("should reject unsupported schemaVersion", () => {
-      const invalidVersion = {
-        version: "PortableCharacterV1",
-        schemaVersion: CURRENT_SCHEMA_VERSION + 1,
-        exportedAt: "2024-01-15T10:30:00.000Z",
-        character: { name: "Test" },
-      };
-
-      const result = PortableCharacterV1Schema.safeParse(invalidVersion);
-      expect(result.success).toBe(false);
-    });
+    const result = PortableCharacterV1Schema.safeParse(invalidDate);
+    expect(result.success).toBe(false);
   });
+
+  it("should reject unsupported schemaVersion", () => {
+    const invalidVersion = {
+      version: "PortableCharacterV1",
+      schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+      exportedAt: "2024-01-15T10:30:00.000Z",
+      character: { name: "Test" },
+    };
+
+    const result = PortableCharacterV1Schema.safeParse(invalidVersion);
+    expect(result.success).toBe(false);
+  });
+});
 
 describe("parsePortableCharacter", () => {
   it("should parse valid export data", () => {

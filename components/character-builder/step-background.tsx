@@ -20,9 +20,7 @@ export function StepBackground({ onEnhance, enhancingField }: StepBackgroundProp
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold mb-1">Background & History</h2>
-        <p className="text-sm text-muted-foreground">
-          Give your character depth with a backstory
-        </p>
+        <p className="text-sm text-muted-foreground">Give your character depth with a backstory</p>
       </div>
 
       <FieldWithAI

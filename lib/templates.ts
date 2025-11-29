@@ -58,16 +58,16 @@ export interface PersonaData {
 }
 
 /** setValue function type for applying templates */
-type SetValueFn = (field: keyof CharacterFormData, value: CharacterFormData[keyof CharacterFormData]) => void;
+type SetValueFn = (
+  field: keyof CharacterFormData,
+  value: CharacterFormData[keyof CharacterFormData],
+) => void;
 
 /**
  * Apply a template's fields to a form using react-hook-form's setValue.
  * Uses the TEMPLATE_FIELDS constant to ensure all fields are handled.
  */
-export function applyTemplateToForm(
-  template: CharacterTemplate,
-  setValue: SetValueFn
-): void {
+export function applyTemplateToForm(template: CharacterTemplate, setValue: SetValueFn): void {
   // Apply string fields
   for (const field of TEMPLATE_FIELDS) {
     const value = template[field];
@@ -126,9 +126,24 @@ export function extractPersonaData<T extends Partial<PersonaData>>(source: T): P
  * Common emoji icons for templates.
  */
 export const TEMPLATE_ICONS = [
-  "📝", "💡", "⭐", "🎯", "🔥", "💎",
-  "🌟", "✨", "🎨", "🧠", "💼", "❤️",
-  "🚀", "🎭", "🌈", "🔮", "⚡", "🎪",
+  "📝",
+  "💡",
+  "⭐",
+  "🎯",
+  "🔥",
+  "💎",
+  "🌟",
+  "✨",
+  "🎨",
+  "🧠",
+  "💼",
+  "❤️",
+  "🚀",
+  "🎭",
+  "🌈",
+  "🔮",
+  "⚡",
+  "🎪",
 ] as const;
 
 /**
@@ -136,20 +151,24 @@ export const TEMPLATE_ICONS = [
  */
 export function getTemplatePreview(template: CharacterTemplate): string {
   const parts: string[] = [];
-  
+
   if (template.description) {
-    parts.push(template.description.slice(0, 100) + (template.description.length > 100 ? "..." : ""));
+    parts.push(
+      template.description.slice(0, 100) + (template.description.length > 100 ? "..." : ""),
+    );
   } else if (template.personality) {
-    parts.push(template.personality.slice(0, 100) + (template.personality.length > 100 ? "..." : ""));
+    parts.push(
+      template.personality.slice(0, 100) + (template.personality.length > 100 ? "..." : ""),
+    );
   }
-  
+
   if (template.tags && template.tags.length > 0) {
     parts.push(`Tags: ${template.tags.join(", ")}`);
   }
-  
+
   if (template.nsfwEnabled) {
     parts.push("🔞 NSFW enabled");
   }
-  
+
   return parts.join("\n") || "No description";
 }

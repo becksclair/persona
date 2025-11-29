@@ -14,14 +14,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  Upload,
-  FileJson,
-  Pencil,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Upload, FileJson, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PortableCharacterV1 } from "@/lib/portable-character";
 
@@ -31,7 +24,7 @@ interface ImportPreviewModalProps {
   data: PortableCharacterV1 | PortableCharacterV1[] | null;
   onConfirm: (
     data: PortableCharacterV1 | PortableCharacterV1[],
-    renamedNames?: Map<number, string>
+    renamedNames?: Map<number, string>,
   ) => Promise<void>;
 }
 
@@ -74,12 +67,7 @@ function CharacterPreviewCard({
       <div className="flex items-start gap-3">
         <Avatar className="h-12 w-12 ring-2 ring-background shadow-md">
           <AvatarImage src={char.avatar ?? undefined} />
-          <AvatarFallback
-            className={cn(
-              getAvatarColor(currentName),
-              "text-white font-semibold"
-            )}
-          >
+          <AvatarFallback className={cn(getAvatarColor(currentName), "text-white font-semibold")}>
             {currentName[0]?.toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -112,19 +100,13 @@ function CharacterPreviewCard({
               </button>
             </div>
           )}
-          {char.tagline && (
-            <p className="text-sm text-muted-foreground truncate">
-              {char.tagline}
-            </p>
-          )}
+          {char.tagline && <p className="text-sm text-muted-foreground truncate">{char.tagline}</p>}
         </div>
       </div>
 
       {/* Description preview */}
       {char.description && (
-        <p className="text-sm text-muted-foreground line-clamp-2">
-          {char.description}
-        </p>
+        <p className="text-sm text-muted-foreground line-clamp-2">{char.description}</p>
       )}
 
       {/* Tags and flags */}
@@ -186,15 +168,9 @@ export function ImportPreviewModal({
   const [importing, setImporting] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingName, setEditingName] = useState<string | null>(null);
-  const [renamedNames, setRenamedNames] = useState<Map<number, string>>(
-    new Map()
-  );
+  const [renamedNames, setRenamedNames] = useState<Map<number, string>>(new Map());
 
-  const characters = data
-    ? Array.isArray(data)
-      ? data
-      : [data]
-    : [];
+  const characters = data ? (Array.isArray(data) ? data : [data]) : [];
   const isBatch = characters.length > 1;
 
   const handleStartEdit = useCallback((index: number, currentName: string) => {
@@ -218,7 +194,7 @@ export function ImportPreviewModal({
     (index: number, originalName: string) => {
       return renamedNames.get(index) ?? originalName;
     },
-    [renamedNames]
+    [renamedNames],
   );
 
   const handleConfirm = async () => {
@@ -254,8 +230,8 @@ export function ImportPreviewModal({
             {isBatch ? `Import ${characters.length} Characters` : "Import Character"}
           </DialogTitle>
           <DialogDescription>
-            Review the character{isBatch ? "s" : ""} before importing. You can
-            edit names to avoid conflicts.
+            Review the character{isBatch ? "s" : ""} before importing. You can edit names to avoid
+            conflicts.
           </DialogDescription>
         </DialogHeader>
 
@@ -269,9 +245,7 @@ export function ImportPreviewModal({
                 editingName={editingIndex === index ? editingName : null}
                 onEditName={setEditingName}
                 onSaveName={handleSaveEdit}
-                onStartEdit={() =>
-                  handleStartEdit(index, getName(index, char.character.name))
-                }
+                onStartEdit={() => handleStartEdit(index, getName(index, char.character.name))}
                 currentName={getName(index, char.character.name)}
               />
             ))}
@@ -280,10 +254,7 @@ export function ImportPreviewModal({
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>
-            If a character with the same name exists, it will be automatically
-            renamed.
-          </span>
+          <span>If a character with the same name exists, it will be automatically renamed.</span>
         </div>
 
         <DialogFooter>

@@ -25,8 +25,8 @@ export async function POST(_req: Request, context: RouteContext) {
       .where(
         and(
           eq(characters.id, id),
-          or(eq(characters.userId, user.userId), eq(characters.isBuiltIn, true))
-        )
+          or(eq(characters.userId, user.userId), eq(characters.isBuiltIn, true)),
+        ),
       )
       .limit(1);
 

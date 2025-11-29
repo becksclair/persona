@@ -43,9 +43,6 @@ Match the tone and style to the character's archetype if provided.`;
     return NextResponse.json({ enhanced: result.text.trim() });
   } catch (error) {
     console.error("[characters/enhance] Error:", error);
-    return NextResponse.json(
-      { error: "Enhancement failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Enhancement failed" }, { status: 500 });
   }
 }

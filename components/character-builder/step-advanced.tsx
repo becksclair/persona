@@ -78,7 +78,7 @@ export function StepAdvanced() {
                           "text-[10px] px-1.5 py-0.5 rounded",
                           model.isLocal
                             ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-blue-500/20 text-blue-400"
+                            : "bg-blue-500/20 text-blue-400",
                         )}
                       >
                         {model.isLocal ? "Local" : "Cloud"}
@@ -129,9 +129,7 @@ export function StepAdvanced() {
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm font-medium">NSFW Content</Label>
-                <p className="text-xs text-muted-foreground">
-                  Enable adult content generation
-                </p>
+                <p className="text-xs text-muted-foreground">Enable adult content generation</p>
               </div>
               <Switch checked={field.value} onCheckedChange={field.onChange} />
             </div>

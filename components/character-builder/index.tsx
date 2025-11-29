@@ -8,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetContent,
@@ -28,10 +30,16 @@ import {
   Settings,
   Save,
   X,
+  History,
+  Sparkle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCharacters, type Character } from "@/lib/hooks/use-characters";
 import { useTemplates, type CharacterTemplate } from "@/lib/hooks/use-templates";
+import { useSnapshots, type PersonaSnapshot } from "@/lib/hooks/use-snapshots";
+import { type PortableCharacterData } from "@/lib/portable-character";
+import { portableToCharacterUpdate } from "@/lib/character-adapter";
+import { useToast } from "@/lib/hooks/use-toast";
 import { TEMPLATE_ICONS } from "@/lib/templates";
 
 import { StepBasics } from "./step-basics";
@@ -40,12 +48,7 @@ import { StepBackground } from "./step-background";
 import { StepPresent } from "./step-present";
 import { StepAdvanced } from "./step-advanced";
 import { PreviewPanel } from "./preview-panel";
-import {
-  type CharacterFormData,
-  characterFormSchema,
-  DEFAULT_FORM_DATA,
-  STEPS,
-} from "./types";
+import { type CharacterFormData, characterFormSchema, DEFAULT_FORM_DATA, STEPS } from "./types";
 
 const STEP_ICONS = [User, Brain, BookOpen, Clock, Settings];
 
@@ -58,10 +61,24 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [enhancingField, setEnhancingField] = useState<string | null>(null);
+  const [snapshotSheetOpen, setSnapshotSheetOpen] = useState(false);
+  const [newSnapshotLabel, setNewSnapshotLabel] = useState("");
+  const [newSnapshotNotes, setNewSnapshotNotes] = useState("");
+  const [activeSnapshotId, setActiveSnapshotId] = useState<string | null>(null);
+  const [restoreLoadingId, setRestoreLoadingId] = useState<string | null>(null);
+  const [duplicateLoadingId, setDuplicateLoadingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const { characters, createCharacter, updateCharacter } = useCharacters();
   const { templates, deleteTemplate, updateTemplate } = useTemplates();
   const isEditing = !!characterId;
+  const {
+    snapshots,
+    loading: snapshotsLoading,
+    createSnapshot,
+    restoreSnapshot,
+    deleteSnapshot,
+  } = useSnapshots(characterId, { enabled: isEditing });
 
   // Template editing state
   const [editingTemplate, setEditingTemplate] = useState<CharacterTemplate | null>(null);
@@ -108,31 +125,19 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
 
   const name = watch("name");
 
+  useEffect(() => {
+    if (isEditing && name && !newSnapshotLabel) {
+      setNewSnapshotLabel(`${name} checkpoint`);
+    }
+  }, [isEditing, name, newSnapshotLabel]);
+
   // Load existing character data when editing
   useEffect(() => {
     if (characterId) {
       const character = characters.find((c) => c.id === characterId);
       if (character) {
-        reset({
-          name: character.name || "",
-          avatar: character.avatar || "",
-          tagline: character.tagline || "",
-          archetype: character.archetype || "custom",
-          tags: character.tags || [],
-          personality: character.personality || "",
-          toneStyle: character.toneStyle || "",
-          boundaries: character.boundaries || "",
-          roleRules: character.roleRules || "",
-          description: character.description || "",
-          background: character.background || "",
-          lifeHistory: character.lifeHistory || "",
-          currentContext: character.currentContext || "",
-          customInstructionsLocal: character.customInstructionsLocal || "",
-          nsfwEnabled: character.nsfwEnabled || false,
-          evolveEnabled: character.evolveEnabled || false,
-          defaultModelId: character.defaultModelId || "",
-          defaultTemperature: character.defaultTemperature ?? 0.7,
-        });
+        reset(characterToFormData(character));
+        setNewSnapshotLabel((prev) => prev || `${character.name} checkpoint`);
       }
     }
   }, [characterId, characters, reset]);
@@ -162,8 +167,85 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
         setEnhancingField(null);
       }
     },
-    [methods, setValue]
+    [methods, setValue],
   );
+
+  const handleCreateSnapshot = async () => {
+    if (!isEditing) return;
+    const label = newSnapshotLabel.trim() || `${name || "Character"} checkpoint`;
+    try {
+      await createSnapshot(label, newSnapshotNotes.trim() || undefined);
+      toast({ title: "Checkpoint saved", description: label, variant: "success" });
+      setNewSnapshotNotes("");
+      setActiveSnapshotId(null);
+    } catch (error) {
+      console.error("Failed to create snapshot:", error);
+      toast({ title: "Failed to save checkpoint", variant: "destructive" });
+    }
+  };
+
+  const handleLoadSnapshot = (snapshot: PersonaSnapshot) => {
+    reset(snapshotToFormData(snapshot.data));
+    setCurrentStep(1);
+    setActiveSnapshotId(snapshot.id);
+  };
+
+  const handleRestoreSnapshot = async (snapshot: PersonaSnapshot) => {
+    setRestoreLoadingId(snapshot.id);
+    try {
+      const result = await restoreSnapshot(snapshot.id);
+      if (result?.character) {
+        reset(characterToFormData(result.character));
+        setActiveSnapshotId(snapshot.id);
+        toast({
+          title: "Restored checkpoint",
+          description: snapshot.label,
+          variant: "success",
+        });
+      }
+    } catch (error) {
+      console.error("Restore failed:", error);
+      toast({ title: "Restore failed", variant: "destructive" });
+    } finally {
+      setRestoreLoadingId(null);
+    }
+  };
+
+  const handleDuplicateSnapshot = async (snapshot: PersonaSnapshot) => {
+    setDuplicateLoadingId(snapshot.id);
+    try {
+      const payload = snapshotToCharacterPayload(snapshot.data, snapshot.label);
+      await createCharacter(payload);
+      toast({
+        title: "Duplicated as new character",
+        description: snapshot.label,
+        variant: "success",
+      });
+    } catch (error) {
+      console.error("Duplicate failed:", error);
+      toast({ title: "Duplicate failed", variant: "destructive" });
+    } finally {
+      setDuplicateLoadingId(null);
+    }
+  };
+
+  const handleDeleteSnapshot = async (snapshot: PersonaSnapshot) => {
+    if (!window.confirm(`Delete checkpoint "${snapshot.label}"? This cannot be undone.`)) return;
+    try {
+      await deleteSnapshot(snapshot.id);
+      toast({
+        title: "Checkpoint deleted",
+        description: snapshot.label,
+        variant: "success",
+      });
+      if (activeSnapshotId === snapshot.id) {
+        setActiveSnapshotId(null);
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast({ title: "Delete failed", variant: "destructive" });
+    }
+  };
 
   // Form submission
   const onSubmit = async (data: CharacterFormData) => {
@@ -190,6 +272,18 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
         defaultTemperature: data.defaultTemperature,
       };
 
+      if (isEditing && characterId && isDirty) {
+        try {
+          await createSnapshot(
+            `${data.name.trim()} – before save`,
+            "Auto checkpoint before saving changes",
+            "auto",
+          );
+        } catch (error) {
+          console.warn("Checkpoint capture failed:", error);
+        }
+      }
+
       if (isEditing && characterId) {
         await updateCharacter(characterId, characterData);
       } else {
@@ -212,21 +306,13 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
 
   return (
     <FormProvider {...methods}>
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="flex h-full bg-background"
-      >
+      <form onSubmit={handleSubmit(onSubmit)} className="flex h-full bg-background">
         {/* Main Builder Panel */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleCancel}
-              >
+              <Button type="button" variant="ghost" size="icon" onClick={handleCancel}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
@@ -239,6 +325,17 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSnapshotSheetOpen(true)}
+                  className="border-emerald-600/60 bg-linear-to-r from-emerald-900/70 via-slate-900/40 to-teal-800/60 text-emerald-100"
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  Checkpoints
+                </Button>
+              )}
               <Button type="button" variant="outline" onClick={handleCancel}>
                 <X className="h-4 w-4 mr-2" />
                 Cancel
@@ -269,7 +366,7 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
                     "flex items-center gap-2 px-4 py-2 rounded-lg transition-all",
                     isActive && "bg-primary text-primary-foreground shadow-md",
                     isCompleted && !isActive && "bg-primary/20 text-primary",
-                    !isActive && !isCompleted && "text-muted-foreground hover:bg-accent"
+                    !isActive && !isCompleted && "text-muted-foreground hover:bg-accent",
                   )}
                 >
                   {isCompleted && !isActive ? (
@@ -277,9 +374,7 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
                   ) : (
                     <Icon className="h-4 w-4" />
                   )}
-                  <span className="hidden sm:inline text-sm font-medium">
-                    {step.title}
-                  </span>
+                  <span className="hidden sm:inline text-sm font-medium">{step.title}</span>
                   {index < STEPS.length - 1 && (
                     <div className="hidden sm:block w-8 h-px bg-border mx-2" />
                   )}
@@ -301,22 +396,13 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
                 />
               )}
               {currentStep === 2 && (
-                <StepPersonality
-                  onEnhance={handleEnhance}
-                  enhancingField={enhancingField}
-                />
+                <StepPersonality onEnhance={handleEnhance} enhancingField={enhancingField} />
               )}
               {currentStep === 3 && (
-                <StepBackground
-                  onEnhance={handleEnhance}
-                  enhancingField={enhancingField}
-                />
+                <StepBackground onEnhance={handleEnhance} enhancingField={enhancingField} />
               )}
               {currentStep === 4 && (
-                <StepPresent
-                  onEnhance={handleEnhance}
-                  enhancingField={enhancingField}
-                />
+                <StepPresent onEnhance={handleEnhance} enhancingField={enhancingField} />
               )}
               {currentStep === 5 && <StepAdvanced />}
             </div>
@@ -363,14 +449,172 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
         <PreviewPanel />
       </form>
 
+      {/* Snapshot Sheet */}
+      <Sheet open={snapshotSheetOpen} onOpenChange={setSnapshotSheetOpen}>
+        <SheetContent
+          side="right"
+          className="w-[420px] sm:w-[470px] bg-linear-to-b from-slate-950 via-slate-900 to-emerald-950 text-slate-50"
+        >
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-emerald-300" />
+              Checkpoints & History
+            </SheetTitle>
+            <SheetDescription className="text-slate-300">
+              Save labelled snapshots, load them into the form, or restore the character to a
+              checkpoint.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-5 space-y-4">
+            <div className="rounded-xl border border-emerald-700/40 bg-emerald-900/30 p-4 shadow-inner shadow-emerald-900/40">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="snapshot-label" className="text-slate-100">
+                    New checkpoint
+                  </Label>
+                  <p className="text-xs text-emerald-200/70">
+                    Capture the current form as a restore point.
+                  </p>
+                </div>
+                <Badge variant="outline" className="border-emerald-500/40 text-emerald-200">
+                  {snapshots.length} saved
+                </Badge>
+              </div>
+              <div className="mt-3 space-y-3">
+                <Input
+                  id="snapshot-label"
+                  value={newSnapshotLabel}
+                  onChange={(e) => setNewSnapshotLabel(e.target.value)}
+                  placeholder="e.g., Sam v1.2 – tighter boundaries"
+                  className="bg-slate-900/60 border-emerald-700/50 text-slate-50 placeholder:text-slate-500"
+                />
+                <Textarea
+                  id="snapshot-notes"
+                  value={newSnapshotNotes}
+                  onChange={(e) => setNewSnapshotNotes(e.target.value)}
+                  placeholder="Short note about what's changing"
+                  rows={2}
+                  className="bg-slate-900/60 border-emerald-700/50 text-slate-50 placeholder:text-slate-500"
+                />
+                <Button
+                  type="button"
+                  onClick={() => void handleCreateSnapshot()}
+                  disabled={snapshotsLoading || !newSnapshotLabel.trim()}
+                  className="w-full bg-emerald-600 text-emerald-50 hover:bg-emerald-500"
+                >
+                  {snapshotsLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkle className="h-4 w-4 mr-2" />
+                  )}
+                  Save checkpoint
+                </Button>
+              </div>
+            </div>
+
+            <ScrollArea className="h-[60vh] pr-1">
+              <div className="space-y-3">
+                {snapshots.length === 0 && !snapshotsLoading && (
+                  <div className="rounded-xl border border-dashed border-emerald-700/50 bg-slate-900/50 p-4 text-sm text-slate-300">
+                    No checkpoints yet. Create one to start versioning this character.
+                  </div>
+                )}
+
+                {snapshots.map((snapshot) => {
+                  const isActive = activeSnapshotId === snapshot.id;
+                  return (
+                    <div
+                      key={snapshot.id}
+                      className={cn(
+                        "rounded-xl border p-4 transition-all",
+                        isActive
+                          ? "border-emerald-400/70 bg-emerald-900/50 shadow-lg shadow-emerald-900/40"
+                          : "border-slate-800 bg-slate-900/60 hover:border-emerald-700/60",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-slate-50">{snapshot.label}</p>
+                          <p className="text-[11px] text-slate-400">
+                            {formatTimestamp(snapshot.createdAt)}
+                          </p>
+                          {snapshot.notes && (
+                            <p className="text-xs text-slate-300/80 line-clamp-2">
+                              {snapshot.notes}
+                            </p>
+                          )}
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "uppercase tracking-wide text-[10px]",
+                            snapshot.kind === "auto"
+                              ? "border-amber-400/60 text-amber-200"
+                              : "border-emerald-400/60 text-emerald-200",
+                          )}
+                        >
+                          {snapshot.kind}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleLoadSnapshot(snapshot)}
+                          className="border-emerald-600/60 text-emerald-100"
+                        >
+                          Load into form
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => void handleRestoreSnapshot(snapshot)}
+                          disabled={restoreLoadingId === snapshot.id}
+                          className="bg-emerald-600 text-emerald-50 hover:bg-emerald-500"
+                        >
+                          {restoreLoadingId === snapshot.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Clock className="h-4 w-4 mr-2" />
+                          )}
+                          Restore
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void handleDuplicateSnapshot(snapshot)}
+                          disabled={duplicateLoadingId === snapshot.id}
+                          className="text-slate-200 hover:text-emerald-100"
+                        >
+                          {duplicateLoadingId === snapshot.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : null}
+                          Duplicate as new
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void handleDeleteSnapshot(snapshot)}
+                          className="text-red-300 hover:text-red-200"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Template Edit Sheet */}
       <Sheet open={!!editingTemplate} onOpenChange={(open) => !open && setEditingTemplate(null)}>
         <SheetContent side="right" className="w-[400px] sm:w-[450px]">
           <SheetHeader>
             <SheetTitle>Edit Template</SheetTitle>
-            <SheetDescription>
-              Update the name and icon for this template.
-            </SheetDescription>
+            <SheetDescription>Update the name and icon for this template.</SheetDescription>
           </SheetHeader>
 
           <div className="py-6 space-y-6">
@@ -398,7 +642,7 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
                       "w-10 h-10 rounded-lg border text-xl flex items-center justify-center transition-all",
                       editTemplateIcon === icon
                         ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
+                        : "border-border hover:border-primary/50",
                     )}
                   >
                     {icon}
@@ -437,10 +681,7 @@ export function CharacterBuilder({ characterId }: CharacterBuilderProps) {
 }
 
 // Helper to build AI enhancement prompts
-function buildEnhancePrompt(
-  field: keyof CharacterFormData,
-  context: CharacterFormData
-): string {
+function buildEnhancePrompt(field: keyof CharacterFormData, context: CharacterFormData): string {
   const base = `Character: ${context.name || "unnamed"}\nArchetype: ${context.archetype || "custom"}\nTagline: ${context.tagline || "none"}`;
 
   const prompts: Partial<Record<keyof CharacterFormData, string>> = {
@@ -456,4 +697,81 @@ function buildEnhancePrompt(
   };
 
   return prompts[field] ?? base;
+}
+
+function clampTemperature(value: number | null | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) return 0.7;
+  return Math.max(0, Math.min(1, value));
+}
+
+function characterToFormData(character: Character): CharacterFormData {
+  return {
+    name: character.name || "",
+    avatar: character.avatar || "",
+    tagline: character.tagline || "",
+    archetype: character.archetype || "custom",
+    tags: character.tags || [],
+    personality: character.personality || "",
+    toneStyle: character.toneStyle || "",
+    boundaries: character.boundaries || "",
+    roleRules: character.roleRules || "",
+    description: character.description || "",
+    background: character.background || "",
+    lifeHistory: character.lifeHistory || "",
+    currentContext: character.currentContext || "",
+    customInstructionsLocal: character.customInstructionsLocal || "",
+    nsfwEnabled: character.nsfwEnabled || false,
+    evolveEnabled: character.evolveEnabled || false,
+    defaultModelId: character.defaultModelId || "",
+    defaultTemperature: clampTemperature(character.defaultTemperature ?? 0.7),
+  };
+}
+
+function snapshotToFormData(data: PortableCharacterData): CharacterFormData {
+  return {
+    name: data.name || "",
+    avatar: data.avatar || "",
+    tagline: data.tagline || "",
+    archetype: data.archetype || "custom",
+    tags: data.tags || [],
+    personality: data.personality || "",
+    toneStyle: data.toneStyle || "",
+    boundaries: data.boundaries || "",
+    roleRules: data.roleRules || "",
+    description: data.description || "",
+    background: data.background || "",
+    lifeHistory: data.lifeHistory || "",
+    currentContext: data.currentContext || "",
+    customInstructionsLocal: data.customInstructionsLocal || "",
+    nsfwEnabled: data.nsfwEnabled ?? false,
+    evolveEnabled: data.evolveEnabled ?? false,
+    defaultModelId: data.defaultModelId || "",
+    defaultTemperature: clampTemperature(data.defaultTemperature ?? 0.7),
+  };
+}
+
+function snapshotToCharacterPayload(
+  data: PortableCharacterData,
+  label?: string,
+): Partial<Character> {
+  const payload = portableToCharacterUpdate(data);
+  const { ragMode: _ragMode, ...rest } = payload as Partial<Character> & { ragMode?: unknown };
+  void _ragMode;
+  const characterPayload: Partial<Character> = {
+    ...rest,
+    name: label ? `${rest.name} (${label})` : rest.name,
+    createdAt: undefined,
+    updatedAt: undefined,
+  };
+  return characterPayload;
+}
+
+function formatTimestamp(dateStr: string) {
+  const date = new Date(dateStr);
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

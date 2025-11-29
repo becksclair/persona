@@ -14,10 +14,7 @@ import {
  * Find a unique name for the imported character.
  * Optimized: Single query to fetch all potentially conflicting names.
  */
-async function findUniqueName(
-  userId: string,
-  baseName: string
-): Promise<string> {
+async function findUniqueName(userId: string, baseName: string): Promise<string> {
   // Escape special characters for LIKE pattern
   const escapedBase = baseName.replace(/[%_\\]/g, "\\$&");
 
@@ -31,9 +28,9 @@ async function findUniqueName(
         or(
           eq(characters.name, baseName),
           eq(characters.name, `${baseName} (Imported)`),
-          sql`${characters.name} LIKE ${escapedBase + " (%)"} ESCAPE '\\'`
-        )
-      )
+          sql`${characters.name} LIKE ${escapedBase + " (%)"} ESCAPE '\\'`,
+        ),
+      ),
     );
 
   // Build set of taken names for O(1) lookup
@@ -75,7 +72,7 @@ async function findUniqueName(
  */
 async function importSingleCharacter(
   userId: string,
-  importData: PortableCharacterData
+  importData: PortableCharacterData,
 ): Promise<{ character: typeof characters.$inferSelect; renamed: boolean; originalName?: string }> {
   const uniqueName = await findUniqueName(userId, importData.name);
   const wasRenamed = uniqueName !== importData.name;
@@ -146,7 +143,7 @@ export async function POST(req: Request) {
             error: "Invalid character format in batch",
             details: errors,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -187,7 +184,7 @@ export async function POST(req: Request) {
           failed: failCount,
           results,
         },
-        { status: failCount === results.length ? 400 : 201 }
+        { status: failCount === results.length ? 400 : 201 },
       );
     }
 
@@ -203,7 +200,7 @@ export async function POST(req: Request) {
           error: "Invalid character format",
           details: errors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -215,13 +212,10 @@ export async function POST(req: Request) {
         batch: false,
         ...result,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("[characters/import] POST error:", error);
-    return NextResponse.json(
-      { error: "Failed to import character" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to import character" }, { status: 500 });
   }
 }

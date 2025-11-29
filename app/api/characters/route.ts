@@ -23,8 +23,8 @@ export async function GET(req: Request) {
         and(
           // Show user's characters or built-in characters
           or(eq(characters.userId, user.userId), eq(characters.isBuiltIn, true)),
-          includeArchived ? undefined : eq(characters.isArchived, false)
-        )
+          includeArchived ? undefined : eq(characters.isArchived, false),
+        ),
       )
       .$dynamic();
 
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
         (c) =>
           c.name.toLowerCase().includes(search) ||
           c.tagline?.toLowerCase().includes(search) ||
-          c.description?.toLowerCase().includes(search)
+          c.description?.toLowerCase().includes(search),
       );
     }
 

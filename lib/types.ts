@@ -1,8 +1,13 @@
 import { z } from "zod";
-import {
-  ModelProviderSchema,
-  ModelService,
-} from "./model-service";
+import { ModelProviderSchema, ModelService } from "./model-service";
+
+export type RAGMode = "heavy" | "light" | "ignore";
+
+export interface ConversationRagOverrides {
+  enabled?: boolean;
+  mode?: RAGMode;
+  tagFilters?: string[];
+}
 
 // Re-export model types from the model-service module
 export {
@@ -49,6 +54,7 @@ export const RAGSettingsSchema = z.object({
   enabled: z.boolean(),
   contextRecall: z.number().min(0).max(1),
   knowledgeBase: z.array(z.string()), // File IDs or names
+  tagFilters: z.array(z.string()),
 });
 
 export const ChatMessageSchema = z.object({

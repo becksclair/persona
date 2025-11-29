@@ -9,8 +9,10 @@ import {
   jsonb,
   vector,
   index,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import type { PortableCharacterData } from "../portable-character";
 
 // ─────────────────────────────────────────────────────────────
 // Users
@@ -25,7 +27,10 @@ export const users = pgTable("users", {
 
 export const userSettings = pgTable("user_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
   enterSendsMessage: boolean("enter_sends_message").default(true).notNull(),
   theme: text("theme").default("system").notNull(), // 'light' | 'dark' | 'system'
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -39,7 +44,9 @@ export const sessions = pgTable(
   "sessions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -56,7 +63,9 @@ export const sessions = pgTable(
 // ─────────────────────────────────────────────────────────────
 export const characters = pgTable("characters", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   avatar: text("avatar"),
   tagline: text("tagline"),
@@ -81,6 +90,7 @@ export const characters = pgTable("characters", {
   defaultModelId: text("default_model_id"),
   defaultTemperature: real("default_temperature").default(0.7),
   maxContextWindow: integer("max_context_window"),
+  ragMode: text("rag_mode").default("heavy").notNull(),
   // Flags
   evolveEnabled: boolean("evolve_enabled").default(false).notNull(),
   nsfwEnabled: boolean("nsfw_enabled").default(false).notNull(),
@@ -98,10 +108,13 @@ export const characterTemplates = pgTable(
   "character_templates",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     icon: text("icon").default("📝"),
     description: text("description"),
+
     // Template data (same fields as character)
     tagline: text("tagline"),
     personality: text("personality"),
@@ -113,19 +126,20 @@ export const characterTemplates = pgTable(
     currentContext: text("current_context"),
     customInstructionsLocal: text("custom_instructions_local"),
     tags: jsonb("tags").$type<string[]>(),
+
     // Operational defaults
     defaultModelId: text("default_model_id"),
     defaultTemperature: real("default_temperature").default(0.7),
+
     // Flags
     nsfwEnabled: boolean("nsfw_enabled").default(false).notNull(),
     evolveEnabled: boolean("evolve_enabled").default(false).notNull(),
+
     // Timestamps
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [
-    index("character_templates_user_id_idx").on(table.userId),
-  ],
+  (table) => [index("character_templates_user_id_idx").on(table.userId)],
 );
 
 // ─────────────────────────────────────────────────────────────
@@ -135,14 +149,28 @@ export const conversations = pgTable(
   "conversations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
     characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
     title: text("title"),
+
     // Per-chat model overrides
     modelIdOverride: text("model_id_override"),
     temperatureOverride: real("temperature_override"),
+
     // Status
     isArchived: boolean("is_archived").default(false).notNull(),
+
+    // Per-chat RAG overrides (enable/disable, mode, tag filters)
+    ragOverrides: jsonb("rag_overrides").$type<{
+      enabled?: boolean;
+      mode?: "heavy" | "light" | "ignore";
+      tagFilters?: string[];
+    }>(),
+
     // Timestamps
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -161,12 +189,16 @@ export const messages = pgTable(
   "messages",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
     role: text("role").notNull(), // 'user' | 'assistant' | 'system' | 'inner_monologue'
     content: text("content").notNull(),
+
     // Context and metadata
     contextTags: jsonb("context_tags").$type<string[]>(),
     moodSnapshot: jsonb("mood_snapshot").$type<Record<string, number>>(),
+
     // Model/provider info
     meta: jsonb("meta").$type<{
       tokens?: number;
@@ -175,6 +207,7 @@ export const messages = pgTable(
       memoryItemsUsed?: string[];
       toolCalls?: unknown[];
     }>(),
+
     // Timestamps
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -192,7 +225,9 @@ export const knowledgeBaseFiles = pgTable(
   "knowledge_base_files",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     characterId: uuid("character_id").references(() => characters.id, { onDelete: "cascade" }),
     fileName: text("file_name").notNull(),
     fileType: text("file_type"),
@@ -233,6 +268,38 @@ export const memoryItems = pgTable(
     index("memory_items_owner_idx").on(table.ownerType, table.ownerId),
     index("memory_items_source_idx").on(table.sourceType, table.sourceId),
   ],
+);
+
+// ─────────────────────────────────────────────────────────────
+// Persona Snapshots (versioned checkpoints)
+// ─────────────────────────────────────────────────────────────
+export const personaSnapshots = pgTable(
+  "persona_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    notes: text("notes"),
+    kind: text("kind").notNull().default("manual"), // manual | auto
+    data: jsonb("data").$type<PortableCharacterData>(),
+    sourceSnapshotId: uuid("source_snapshot_id"),
+    characterUpdatedAt: timestamp("character_updated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdx: index("persona_snapshots_user_id_idx").on(table.userId),
+    characterIdx: index("persona_snapshots_character_id_idx").on(table.characterId),
+    sourceSnapshotFk: foreignKey({
+      name: "persona_snapshots_source_snapshot_id_persona_snapshots_id_fk",
+      columns: [table.sourceSnapshotId],
+      foreignColumns: [table.id],
+    }).onDelete("set null"),
+  }),
 );
 
 // ─────────────────────────────────────────────────────────────
@@ -300,5 +367,20 @@ export const characterTemplatesRelations = relations(characterTemplates, ({ one 
   user: one(users, {
     fields: [characterTemplates.userId],
     references: [users.id],
+  }),
+}));
+
+export const personaSnapshotsRelations = relations(personaSnapshots, ({ one }) => ({
+  user: one(users, {
+    fields: [personaSnapshots.userId],
+    references: [users.id],
+  }),
+  character: one(characters, {
+    fields: [personaSnapshots.characterId],
+    references: [characters.id],
+  }),
+  sourceSnapshot: one(personaSnapshots, {
+    fields: [personaSnapshots.sourceSnapshotId],
+    references: [personaSnapshots.id],
   }),
 }));

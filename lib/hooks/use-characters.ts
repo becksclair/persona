@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { eventBus, Events } from "@/lib/events";
+import type { RAGMode } from "@/lib/types";
 
 export interface Character {
   id: string;
@@ -28,6 +29,7 @@ export interface Character {
   nsfwEnabled: boolean;
   isBuiltIn: boolean;
   isArchived: boolean;
+  ragMode?: RAGMode | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,21 +102,18 @@ export function useCharacters(options: UseCharactersOptions | boolean = {}) {
     };
   }, [fetchCharacters, enabled]);
 
-  const createCharacter = useCallback(
-    async (data: Partial<Character>) => {
-      const res = await fetch("/api/characters", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+  const createCharacter = useCallback(async (data: Partial<Character>) => {
+    const res = await fetch("/api/characters", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
-      if (!res.ok) throw new Error("Failed to create character");
-      const newChar = await res.json();
-      eventBus.emit(Events.CHARACTER_CREATED, newChar);
-      return newChar;
-    },
-    []
-  );
+    if (!res.ok) throw new Error("Failed to create character");
+    const newChar = await res.json();
+    eventBus.emit(Events.CHARACTER_CREATED, newChar);
+    return newChar;
+  }, []);
 
   const updateCharacter = useCallback(
     async (id: string, updates: Partial<Character>) => {
@@ -142,26 +141,29 @@ export function useCharacters(options: UseCharactersOptions | boolean = {}) {
         throw err;
       }
     },
-    [characters]
+    [characters],
   );
 
-  const deleteCharacter = useCallback(async (id: string) => {
-    // Optimistic delete
-    const prevChars = [...characters];
-    setCharacters((prev) => prev.filter((c) => c.id !== id));
+  const deleteCharacter = useCallback(
+    async (id: string) => {
+      // Optimistic delete
+      const prevChars = [...characters];
+      setCharacters((prev) => prev.filter((c) => c.id !== id));
 
-    try {
-      const res = await fetch(`/api/characters/${id}`, { method: "DELETE" });
-      if (!res.ok) {
+      try {
+        const res = await fetch(`/api/characters/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          setCharacters(prevChars);
+          throw new Error("Failed to delete character");
+        }
+        eventBus.emit(Events.CHARACTER_DELETED, id);
+      } catch (err) {
         setCharacters(prevChars);
-        throw new Error("Failed to delete character");
+        throw err;
       }
-      eventBus.emit(Events.CHARACTER_DELETED, id);
-    } catch (err) {
-      setCharacters(prevChars);
-      throw err;
-    }
-  }, [characters]);
+    },
+    [characters],
+  );
 
   const duplicateCharacter = useCallback(async (id: string) => {
     const res = await fetch(`/api/characters/${id}/duplicate`, { method: "POST" });
@@ -175,7 +177,7 @@ export function useCharacters(options: UseCharactersOptions | boolean = {}) {
     async (id: string) => {
       return updateCharacter(id, { isArchived: true });
     },
-    [updateCharacter]
+    [updateCharacter],
   );
 
   return {
