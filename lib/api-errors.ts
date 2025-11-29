@@ -52,7 +52,7 @@ export function apiError(
   code: string,
   message: string,
   status: number,
-  options?: { retryable?: boolean; details?: Record<string, unknown> }
+  options?: { retryable?: boolean; details?: Record<string, unknown> },
 ): NextResponse<ApiError> {
   return NextResponse.json(
     {
@@ -61,32 +61,27 @@ export function apiError(
       retryable: options?.retryable ?? false,
       details: options?.details,
     },
-    { status }
+    { status },
   );
 }
 
 // Common error responses
 export const Errors = {
-  unauthorized: () =>
-    apiError(ErrorCodes.UNAUTHORIZED, "Authentication required", 401),
+  unauthorized: () => apiError(ErrorCodes.UNAUTHORIZED, "Authentication required", 401),
 
   forbidden: () =>
     apiError(ErrorCodes.FORBIDDEN, "You don't have permission to access this resource", 403),
 
-  notFound: (resource = "Resource") =>
-    apiError(ErrorCodes.NOT_FOUND, `${resource} not found`, 404),
+  notFound: (resource = "Resource") => apiError(ErrorCodes.NOT_FOUND, `${resource} not found`, 404),
 
   conversationNotFound: () =>
     apiError(ErrorCodes.CONVERSATION_NOT_FOUND, "Conversation not found", 404),
 
-  characterNotFound: () =>
-    apiError(ErrorCodes.CHARACTER_NOT_FOUND, "Character not found", 404),
+  characterNotFound: () => apiError(ErrorCodes.CHARACTER_NOT_FOUND, "Character not found", 404),
 
-  invalidJson: () =>
-    apiError(ErrorCodes.INVALID_JSON, "Invalid JSON body", 400),
+  invalidJson: () => apiError(ErrorCodes.INVALID_JSON, "Invalid JSON body", 400),
 
-  invalidRequest: (message: string) =>
-    apiError(ErrorCodes.INVALID_REQUEST, message, 400),
+  invalidRequest: (message: string) => apiError(ErrorCodes.INVALID_REQUEST, message, 400),
 
   cannotModifyBuiltin: () =>
     apiError(ErrorCodes.CANNOT_MODIFY_BUILTIN, "Cannot modify built-in character", 403),
@@ -97,12 +92,13 @@ export const Errors = {
   internal: (message = "An unexpected error occurred") =>
     apiError(ErrorCodes.INTERNAL_ERROR, message, 500, { retryable: true }),
 
-  fileNotFound: () =>
-    apiError(ErrorCodes.FILE_NOT_FOUND, "Knowledge base file not found", 404),
+  fileNotFound: () => apiError(ErrorCodes.FILE_NOT_FOUND, "Knowledge base file not found", 404),
 
   fileTooLarge: (maxSize: string) =>
     apiError(ErrorCodes.FILE_TOO_LARGE, `File exceeds maximum size (${maxSize})`, 413),
 
   indexingFailed: (reason?: string) =>
-    apiError(ErrorCodes.INDEXING_FAILED, reason ?? "File indexing failed", 500, { retryable: true }),
+    apiError(ErrorCodes.INDEXING_FAILED, reason ?? "File indexing failed", 500, {
+      retryable: true,
+    }),
 };

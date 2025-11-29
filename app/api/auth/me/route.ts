@@ -5,10 +5,7 @@ export async function GET() {
     const user = await getCurrentUser();
 
     if (!user) {
-      return Response.json(
-        { error: "Not authenticated" },
-        { status: 401 },
-      );
+      return Response.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const settings = await getUserSettings(user.userId);
@@ -25,9 +22,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[auth/me]", error);
-    return Response.json(
-      { error: "Failed to get user" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Failed to get user" }, { status: 500 });
   }
 }

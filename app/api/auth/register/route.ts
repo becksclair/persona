@@ -9,17 +9,11 @@ export async function POST(req: Request) {
     const { email, password } = body as { email?: string; password?: string };
 
     if (!email || !password) {
-      return Response.json(
-        { error: "Email and password are required" },
-        { status: 400 },
-      );
+      return Response.json({ error: "Email and password are required" }, { status: 400 });
     }
 
     if (password.length < 6) {
-      return Response.json(
-        { error: "Password must be at least 6 characters" },
-        { status: 400 },
-      );
+      return Response.json({ error: "Password must be at least 6 characters" }, { status: 400 });
     }
 
     // Check if user already exists
@@ -30,10 +24,7 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (existing) {
-      return Response.json(
-        { error: "A user with this email already exists" },
-        { status: 409 },
-      );
+      return Response.json({ error: "A user with this email already exists" }, { status: 409 });
     }
 
     const user = await createUser(email, password);
@@ -43,9 +34,6 @@ export async function POST(req: Request) {
     return Response.json({ id: user.id, email: user.email });
   } catch (error) {
     console.error("[auth/register]", error);
-    return Response.json(
-      { error: "Failed to create account" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Failed to create account" }, { status: 500 });
   }
 }

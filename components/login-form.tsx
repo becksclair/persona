@@ -52,9 +52,7 @@ export function LoginForm() {
               {isLogin ? "Welcome back" : "Create account"}
             </CardTitle>
             <CardDescription className="mt-2">
-              {isLogin
-                ? "Sign in to continue to Persona"
-                : "Get started with your AI companions"}
+              {isLogin ? "Sign in to continue to Persona" : "Get started with your AI companions"}
             </CardDescription>
           </div>
         </CardHeader>
@@ -129,8 +127,7 @@ export function LoginForm() {
 
           {/* Dev credentials hint */}
           <div className="mt-4 p-3 bg-muted/50 rounded-md text-xs text-muted-foreground text-center">
-            <span className="font-medium">Dev credentials:</span>{" "}
-            dev@persona.local / devpass123
+            <span className="font-medium">Dev credentials:</span> dev@persona.local / devpass123
           </div>
         </CardContent>
       </Card>

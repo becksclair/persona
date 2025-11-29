@@ -6,19 +6,13 @@ export async function POST(req: Request) {
     const { email, password } = body as { email?: string; password?: string };
 
     if (!email || !password) {
-      return Response.json(
-        { error: "Email and password are required" },
-        { status: 400 },
-      );
+      return Response.json({ error: "Email and password are required" }, { status: 400 });
     }
 
     const user = await authenticateUser(email, password);
 
     if (!user) {
-      return Response.json(
-        { error: "Invalid email or password" },
-        { status: 401 },
-      );
+      return Response.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
     const token = await createSession(user.id);
@@ -27,9 +21,6 @@ export async function POST(req: Request) {
     return Response.json({ id: user.id, email: user.email });
   } catch (error) {
     console.error("[auth/login]", error);
-    return Response.json(
-      { error: "Failed to sign in" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Failed to sign in" }, { status: 500 });
   }
 }
