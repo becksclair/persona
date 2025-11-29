@@ -141,10 +141,17 @@
 
 ### 2.5 Versioning & Checkpoints
 
-- [ ] Implement PersonaSnapshot model aligned with engine spec.
-- [ ] Add UI in builder to create labelled checkpoints.
-- [ ] Allow switching between checkpoints and duplicating from a checkpoint.
-- [ ] Track basic change history per character.
+- [x] Implement PersonaSnapshot model aligned with engine spec.
+- [x] Add UI in builder to create labelled checkpoints.
+- [x] Allow switching between checkpoints and duplicating from a checkpoint.
+- [x] Track basic change history per character.
+- [x] Move snapshot capture/restore guard saves onto the shared background job queue once it exists (non-blocking now).
+
+### Background Jobs (spillover)
+
+- [ ] Introduce lightweight job queue abstraction.
+- [ ] Move KB indexing (currently sync on upload) onto the job queue.
+- [ ] Add snapshot-related jobs (create/guard/restore) to the queue for long-running work.
 
 ---
 
