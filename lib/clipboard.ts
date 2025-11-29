@@ -33,9 +33,8 @@ function execCommandFallback(text: string): boolean {
     document.body.appendChild(textarea);
     textarea.select();
     // execCommand may not exist in some environments (e.g., test runners)
-    const success = typeof document.execCommand === "function"
-      ? document.execCommand("copy")
-      : false;
+    const success =
+      typeof document.execCommand === "function" ? document.execCommand("copy") : false;
     document.body.removeChild(textarea);
     return success;
   } catch {
@@ -47,13 +46,17 @@ function execCommandFallback(text: string): boolean {
  * Announce a message to screen readers using a live region.
  * Creates a temporary element that's removed after announcement.
  */
-export function announceToScreenReader(message: string, priority: "polite" | "assertive" = "polite"): void {
+export function announceToScreenReader(
+  message: string,
+  priority: "polite" | "assertive" = "polite",
+): void {
   const announcement = document.createElement("div");
   announcement.setAttribute("role", "status");
   announcement.setAttribute("aria-live", priority);
   announcement.setAttribute("aria-atomic", "true");
   announcement.className = "sr-only";
-  announcement.style.cssText = "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
+  announcement.style.cssText =
+    "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
   announcement.textContent = message;
   document.body.appendChild(announcement);
 

@@ -28,7 +28,7 @@ interface UseKeyboardShortcutsOptions {
  */
 export function useKeyboardShortcuts(
   shortcuts: ShortcutDefinition[],
-  options: UseKeyboardShortcutsOptions = {}
+  options: UseKeyboardShortcutsOptions = {},
 ): void {
   const { enabled = true } = options;
 
@@ -38,11 +38,14 @@ export function useKeyboardShortcuts(
 
       // Don't trigger shortcuts when typing in inputs (unless it's Escape)
       const target = event.target as HTMLElement;
-      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      const isInput =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
       for (const shortcut of shortcuts) {
         const keyMatches = event.key === shortcut.key || event.key.toUpperCase() === shortcut.key;
-        const ctrlMatches = shortcut.ctrl ? (event.ctrlKey || event.metaKey) : !(event.ctrlKey || event.metaKey);
+        const ctrlMatches = shortcut.ctrl
+          ? event.ctrlKey || event.metaKey
+          : !(event.ctrlKey || event.metaKey);
         const shiftMatches = shortcut.shift ? event.shiftKey : !event.shiftKey;
         const altMatches = shortcut.alt ? event.altKey : !event.altKey;
 
@@ -56,7 +59,7 @@ export function useKeyboardShortcuts(
         }
       }
     },
-    [enabled, shortcuts]
+    [enabled, shortcuts],
   );
 
   useEffect(() => {
@@ -105,6 +108,6 @@ export function useInputKeyboard(options: {
         }
       }
     },
-    [enterSendsMessage, onSend, onBlur]
+    [enterSendsMessage, onSend, onBlur],
   );
 }

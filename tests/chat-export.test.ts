@@ -17,8 +17,18 @@ describe("chat-export", () => {
         character: { id: "char-1", name: "Sam" },
         model: { id: "gpt-4", provider: "openai" },
         messages: [
-          { id: "msg-1", role: "user", content: "Hello", createdAt: new Date("2024-01-01T12:00:00Z") },
-          { id: "msg-2", role: "assistant", content: "Hi there!", createdAt: new Date("2024-01-01T12:00:05Z") },
+          {
+            id: "msg-1",
+            role: "user",
+            content: "Hello",
+            createdAt: new Date("2024-01-01T12:00:00Z"),
+          },
+          {
+            id: "msg-2",
+            role: "assistant",
+            content: "Hi there!",
+            createdAt: new Date("2024-01-01T12:00:05Z"),
+          },
         ],
       };
 
@@ -111,7 +121,12 @@ describe("chat-export", () => {
         },
         messages: [
           { id: "m-1", role: "user", content: "Hello", createdAt: "2024-01-01T12:00:00.000Z" },
-          { id: "m-2", role: "assistant", content: "Hi there!", createdAt: "2024-01-01T12:00:05.000Z" },
+          {
+            id: "m-2",
+            role: "assistant",
+            content: "Hi there!",
+            createdAt: "2024-01-01T12:00:05.000Z",
+          },
         ],
       };
 
@@ -138,8 +153,18 @@ describe("chat-export", () => {
           model: { id: "model", provider: "local" },
         },
         messages: [
-          { id: "m-1", role: "system", content: "System prompt", createdAt: "2024-01-01T12:00:00.000Z" },
-          { id: "m-2", role: "tool", content: "Tool output", createdAt: "2024-01-01T12:00:01.000Z" },
+          {
+            id: "m-1",
+            role: "system",
+            content: "System prompt",
+            createdAt: "2024-01-01T12:00:00.000Z",
+          },
+          {
+            id: "m-2",
+            role: "tool",
+            content: "Tool output",
+            createdAt: "2024-01-01T12:00:01.000Z",
+          },
         ],
       };
 

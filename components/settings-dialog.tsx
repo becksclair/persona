@@ -21,16 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Settings,
-  Keyboard,
-  Palette,
-  Database,
-  Loader2,
-  Moon,
-  Sun,
-  Monitor,
-} from "lucide-react";
+import { Settings, Keyboard, Palette, Database, Loader2, Moon, Sun, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SettingsDialogProps {
@@ -79,7 +70,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
                   activeSection === "keyboard"
                     ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Keyboard className="h-4 w-4" />
@@ -91,7 +82,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
                   activeSection === "theme"
                     ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Palette className="h-4 w-4" />
@@ -103,7 +94,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
                   activeSection === "rag"
                     ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Database className="h-4 w-4" />
@@ -205,7 +196,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     onClick={() => handleThemeChange("light")}
                     className={cn(
                       "p-3 rounded-lg border-2 transition-colors",
-                      theme === "light" ? "border-primary" : "border-muted hover:border-muted-foreground/30"
+                      theme === "light"
+                        ? "border-primary"
+                        : "border-muted hover:border-muted-foreground/30",
                     )}
                   >
                     <div className="w-full aspect-video bg-white rounded border mb-2" />
@@ -215,7 +208,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     onClick={() => handleThemeChange("dark")}
                     className={cn(
                       "p-3 rounded-lg border-2 transition-colors",
-                      theme === "dark" ? "border-primary" : "border-muted hover:border-muted-foreground/30"
+                      theme === "dark"
+                        ? "border-primary"
+                        : "border-muted hover:border-muted-foreground/30",
                     )}
                   >
                     <div className="w-full aspect-video bg-zinc-900 rounded border mb-2" />
@@ -225,7 +220,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     onClick={() => handleThemeChange("system")}
                     className={cn(
                       "p-3 rounded-lg border-2 transition-colors",
-                      theme === "system" ? "border-primary" : "border-muted hover:border-muted-foreground/30"
+                      theme === "system"
+                        ? "border-primary"
+                        : "border-muted hover:border-muted-foreground/30",
                     )}
                   >
                     <div className="w-full aspect-video bg-linear-to-r from-white to-zinc-900 rounded border mb-2" />
@@ -262,13 +259,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
                 <div className="text-xs text-muted-foreground space-y-2">
                   <p>
-                    <strong>Long-term Memory:</strong> Enable persistent memory across sessions using RAG.
+                    <strong>Long-term Memory:</strong> Enable persistent memory across sessions
+                    using RAG.
                   </p>
                   <p>
-                    <strong>Knowledge Base:</strong> Upload documents to enhance character knowledge.
+                    <strong>Knowledge Base:</strong> Upload documents to enhance character
+                    knowledge.
                   </p>
                   <p>
-                    <strong>Context Recall:</strong> Adjust how much past conversation is considered.
+                    <strong>Context Recall:</strong> Adjust how much past conversation is
+                    considered.
                   </p>
                 </div>
               </div>

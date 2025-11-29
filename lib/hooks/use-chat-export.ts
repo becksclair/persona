@@ -75,7 +75,7 @@ export function useChatExport(options: UseChatExportOptions): UseChatExportRetur
         exportAsMarkdown();
       }
     },
-    [exportAsJSON, exportAsMarkdown]
+    [exportAsJSON, exportAsMarkdown],
   );
 
   return { exportAsJSON, exportAsMarkdown, exportAs, canExport };

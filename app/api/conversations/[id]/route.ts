@@ -56,7 +56,8 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   try {
     const body = await req.json();
-    const { title, isArchived, characterId, modelIdOverride, temperatureOverride } = body;
+    const { title, isArchived, characterId, modelIdOverride, temperatureOverride, ragOverrides } =
+      body;
 
     // Verify ownership
     const [existing] = await db
@@ -75,6 +76,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     if (characterId !== undefined) updates.characterId = characterId;
     if (modelIdOverride !== undefined) updates.modelIdOverride = modelIdOverride;
     if (temperatureOverride !== undefined) updates.temperatureOverride = temperatureOverride;
+    if (ragOverrides !== undefined) updates.ragOverrides = ragOverrides;
 
     const [updated] = await db
       .update(conversations)

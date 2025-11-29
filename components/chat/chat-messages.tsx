@@ -33,7 +33,7 @@ export function ChatMessages({
         ...m,
         textContent: getMessageText(m),
       })),
-    [messages]
+    [messages],
   );
 
   // Auto-scroll to bottom on new messages
@@ -67,7 +67,7 @@ export function ChatMessages({
               data-testid={m.role === "user" ? "user-message" : "assistant-message"}
               className={cn(
                 "flex w-full gap-3 group",
-                m.role === "user" ? "justify-end" : "justify-start"
+                m.role === "user" ? "justify-end" : "justify-start",
               )}
             >
               {m.role !== "user" && (
@@ -83,7 +83,7 @@ export function ChatMessages({
                     "rounded-2xl px-4 py-3 text-sm shadow-sm",
                     m.role === "user"
                       ? "bg-primary text-primary-foreground rounded-br-none"
-                      : "bg-muted/50 border rounded-bl-none"
+                      : "bg-muted/50 border rounded-bl-none",
                   )}
                 >
                   {m.textContent || (
@@ -98,7 +98,7 @@ export function ChatMessages({
                     className={cn(
                       "absolute -bottom-2 right-2 p-1.5 rounded-md bg-background border shadow-sm",
                       "opacity-0 group-hover:opacity-100 transition-opacity",
-                      "hover:bg-muted focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                      "hover:bg-muted focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring",
                     )}
                     aria-label={isCopied ? "Copied" : "Copy message"}
                   >

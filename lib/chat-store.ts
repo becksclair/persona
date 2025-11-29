@@ -61,6 +61,6 @@ export const useChatStore = create<ChatState>()(
     }),
     {
       name: "persona-chat-state",
-    }
-  )
+    },
+  ),
 );

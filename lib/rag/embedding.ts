@@ -1,9 +1,5 @@
 import { RAGConfigSvc } from "./config";
-import {
-  DEFAULT_EMBEDDING_DIMENSIONS,
-  RETRY_CONFIG,
-  LM_STUDIO_CONFIG,
-} from "./constants";
+import { DEFAULT_EMBEDDING_DIMENSIONS, RETRY_CONFIG, LM_STUDIO_CONFIG } from "./constants";
 
 /**
  * Embedding service for generating vector embeddings using local LM Studio
@@ -58,7 +54,7 @@ function normalizeEmbedding(embedding: number[], targetDims: number): number[] {
  */
 async function withRetry<T>(
   fn: () => Promise<T>,
-  options: { attempts: number; delayMs: number; name: string }
+  options: { attempts: number; delayMs: number; name: string },
 ): Promise<T> {
   const { attempts, delayMs, name } = options;
   let lastError: Error | undefined;
@@ -71,7 +67,10 @@ async function withRetry<T>(
 
       if (attempt < attempts) {
         const backoff = delayMs * Math.pow(2, attempt - 1);
-        console.warn(`[Embedding] ${name} attempt ${attempt}/${attempts} failed, retrying in ${backoff}ms:`, lastError.message);
+        console.warn(
+          `[Embedding] ${name} attempt ${attempt}/${attempts} failed, retrying in ${backoff}ms:`,
+          lastError.message,
+        );
         await sleep(backoff);
       }
     }
@@ -91,10 +90,11 @@ export async function generateEmbedding(text: string): Promise<EmbeddingResult> 
   const retryDelayMs = RETRY_CONFIG.delayMs;
 
   try {
-    return await withRetry(
-      () => callEmbeddingApi(provider, model, text),
-      { attempts: retryAttempts, delayMs: retryDelayMs, name: `${provider}/${model}` }
-    );
+    return await withRetry(() => callEmbeddingApi(provider, model, text), {
+      attempts: retryAttempts,
+      delayMs: retryDelayMs,
+      name: `${provider}/${model}`,
+    });
   } catch (error) {
     // Try fallback if configured
     const fallbackProvider = RAGConfigSvc.getFallbackEmbeddingProvider();
@@ -103,12 +103,13 @@ export async function generateEmbedding(text: string): Promise<EmbeddingResult> 
     if (fallbackProvider && fallbackModel) {
       console.warn(
         `[Embedding] Primary ${provider}/${model} failed after retries, trying fallback ${fallbackProvider}/${fallbackModel}:`,
-        error instanceof Error ? error.message : error
+        error instanceof Error ? error.message : error,
       );
-      return await withRetry(
-        () => callEmbeddingApi(fallbackProvider, fallbackModel, text),
-        { attempts: retryAttempts, delayMs: retryDelayMs, name: `${fallbackProvider}/${fallbackModel}` }
-      );
+      return await withRetry(() => callEmbeddingApi(fallbackProvider, fallbackModel, text), {
+        attempts: retryAttempts,
+        delayMs: retryDelayMs,
+        name: `${fallbackProvider}/${fallbackModel}`,
+      });
     }
 
     throw error;
@@ -120,7 +121,7 @@ export async function generateEmbedding(text: string): Promise<EmbeddingResult> 
  */
 export async function generateEmbeddings(
   texts: string[],
-  options?: { concurrency?: number }
+  options?: { concurrency?: number },
 ): Promise<EmbeddingResult[]> {
   const concurrency = options?.concurrency ?? 2; // Conservative for local models
   const results: EmbeddingResult[] = [];
@@ -141,7 +142,7 @@ export async function generateEmbeddings(
 async function callEmbeddingApi(
   provider: "lmstudio" | "openai",
   model: string,
-  text: string
+  text: string,
 ): Promise<EmbeddingResult> {
   if (provider === "lmstudio") {
     return callLmStudioEmbedding(model, text);
@@ -251,12 +252,22 @@ export async function checkEmbeddingAvailability(): Promise<EmbeddingServiceStat
       if (response.ok) {
         return { available: true, provider: "lmstudio", model, latencyMs };
       }
-      return { available: false, provider: "lmstudio", model, error: `HTTP ${response.status}`, latencyMs };
+      return {
+        available: false,
+        provider: "lmstudio",
+        model,
+        error: `HTTP ${response.status}`,
+        latencyMs,
+      };
     } catch (error) {
       // Check fallback
       const fallback = RAGConfigSvc.getFallbackEmbeddingProvider();
       if (fallback === "openai" && process.env.OPENAI_API_KEY) {
-        return { available: true, provider: "openai", model: RAGConfigSvc.getFallbackEmbeddingModel() };
+        return {
+          available: true,
+          provider: "openai",
+          model: RAGConfigSvc.getFallbackEmbeddingModel(),
+        };
       }
       return {
         available: false,

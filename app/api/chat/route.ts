@@ -5,8 +5,13 @@ import { eq } from "drizzle-orm";
 import { buildSystemPrompt, FALLBACK_PROMPTS } from "@/lib/prompts";
 import { ModelService } from "@/lib/model-service";
 import { getCurrentUser } from "@/lib/auth";
-import { retrieveRelevantMemories, formatMemoriesForPrompt, getMemoryItemIds } from "@/lib/rag";
-import type { ModelSettings } from "@/lib/types";
+import {
+  retrieveRelevantMemories,
+  formatMemoriesForPrompt,
+  getMemoryItemIds,
+  computeEffectiveRagConfig,
+} from "@/lib/rag";
+import type { ConversationRagOverrides, ModelSettings, RAGMode } from "@/lib/types";
 
 /**
  * Chat API Route - Handles both OpenAI and LM Studio providers
@@ -40,6 +45,8 @@ export async function POST(req: Request) {
     personalityId?: string; // Legacy support
     modelSettings?: ModelSettings; // Client-side override (legacy, lowest priority)
     enableRAG?: boolean; // Explicitly enable/disable RAG for this request
+    ragMode?: RAGMode; // Optional per-request override
+    tagFilters?: string[]; // Optional KB tag filters for this chat turn
   };
 
   try {
@@ -47,7 +54,7 @@ export async function POST(req: Request) {
   } catch {
     return Response.json(
       { code: "INVALID_JSON", message: "Invalid JSON body", retryable: false },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -58,34 +65,46 @@ export async function POST(req: Request) {
   if (!messages || !Array.isArray(messages)) {
     return Response.json(
       { code: "MISSING_MESSAGES", message: "messages array required", retryable: false },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // Fetch conversation and character data for model resolution
-  let conversation: { modelIdOverride: string | null; temperatureOverride: number | null } | null = null;
+  // Fetch conversation and character data for model + RAG resolution
+  let conversation: {
+    modelIdOverride: string | null;
+    temperatureOverride: number | null;
+    ragOverrides?: {
+      enabled?: boolean;
+      mode?: RAGMode;
+      tagFilters?: string[];
+    } | null;
+  } | null = null;
+
   let character: {
     id: string;
     name: string;
     defaultModelId: string | null;
     defaultTemperature: number | null;
+    ragMode?: string | null;
     [key: string]: unknown;
   } | null = null;
 
   try {
     // Fetch conversation if ID provided (for per-chat overrides)
     if (conversationId) {
-      conversation = await db.query.conversations.findFirst({
-        where: eq(conversations.id, conversationId),
-        columns: { modelIdOverride: true, temperatureOverride: true },
-      }) ?? null;
+      conversation =
+        (await db.query.conversations.findFirst({
+          where: eq(conversations.id, conversationId),
+          columns: { modelIdOverride: true, temperatureOverride: true, ragOverrides: true },
+        })) ?? null;
     }
 
     // Fetch character for defaults and system prompt
     if (characterId) {
-      character = await db.query.characters.findFirst({
-        where: eq(characters.id, characterId),
-      }) ?? null;
+      character =
+        (await db.query.characters.findFirst({
+          where: eq(characters.id, characterId),
+        })) ?? null;
     }
   } catch (dbError) {
     console.warn("[chat] DB fetch failed, using defaults:", dbError);
@@ -105,23 +124,38 @@ export async function POST(req: Request) {
   // RAG: Retrieve relevant memories and inject into prompt
   // memoryItemsUsed captured for logging and future inspector tools (TODO: persist in message meta)
   let _memoryItemsUsed: string[] = [];
-  if (enableRAG && user) {
+  const convRag = (conversation?.ragOverrides ?? null) as ConversationRagOverrides | null;
+  const effectiveEnableRAG = enableRAG && convRag?.enabled !== false;
+
+  if (effectiveEnableRAG && user) {
     try {
       // Extract the last user message as the query
-      const lastUserMessage = [...messages].reverse().find(
-        (m: { role: string; parts?: Array<{ type: string; text?: string }> }) => m.role === "user"
-      );
-      const queryText = lastUserMessage?.parts
-        ?.filter((p: { type: string }) => p.type === "text")
-        ?.map((p: { text?: string }) => p.text)
-        ?.join(" ") ?? "";
+      const lastUserMessage = [...messages]
+        .reverse()
+        .find(
+          (m: { role: string; parts?: Array<{ type: string; text?: string }> }) =>
+            m.role === "user",
+        );
+      const queryText =
+        lastUserMessage?.parts
+          ?.filter((p: { type: string }) => p.type === "text")
+          ?.map((p: { text?: string }) => p.text)
+          ?.join(" ") ?? "";
 
       if (queryText) {
+        const { ragMode, tagFilters } = computeEffectiveRagConfig({
+          request: { ragMode: body.ragMode, tagFilters: body.tagFilters },
+          conversation: convRag,
+          character,
+        });
+
         const ragResult = await retrieveRelevantMemories({
           userId: user.userId,
           characterId: character?.id ?? null,
           conversationId: conversationId ?? null,
           query: queryText,
+          ragMode,
+          tagFilters,
         });
 
         if (ragResult.memories.length > 0) {
@@ -135,6 +169,8 @@ export async function POST(req: Request) {
       console.warn("[chat] RAG retrieval failed, continuing without context:", ragError);
     }
   }
+
+  void _memoryItemsUsed;
 
   // Resolve effective model settings using priority chain:
   // 1. Per-chat overrides (conversation.modelIdOverride)
@@ -179,7 +215,7 @@ export async function POST(req: Request) {
         model: modelId,
         retryable: true,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -52,4 +52,6 @@ export const Events = {
   TEMPLATE_CREATED: "template:created",
   TEMPLATE_UPDATED: "template:updated",
   TEMPLATE_DELETED: "template:deleted",
+  SNAPSHOT_CREATED: "snapshot:created",
+  SNAPSHOT_RESTORED: "snapshot:restored",
 } as const;

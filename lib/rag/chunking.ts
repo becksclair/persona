@@ -20,7 +20,7 @@ export interface TextChunk {
  */
 export async function extractTextFromFile(
   storagePath: string,
-  fileType: string | null
+  fileType: string | null,
 ): Promise<string> {
   const buffer = await FileStorage.read(storagePath);
   const mimeType = fileType || "text/plain";
@@ -44,9 +44,7 @@ export async function extractTextFromFile(
   }
 
   // DOCX - basic extraction (simplified, needs mammoth in production)
-  if (
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
+  if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
     // MVP: Try to extract plain text from the XML content
     const text = buffer.toString("utf-8");
     // Extract text between XML tags, very basic
@@ -64,7 +62,10 @@ export async function extractTextFromFile(
 /**
  * Split text into overlapping chunks for embedding
  */
-export function chunkText(text: string, options?: { chunkSize?: number; overlap?: number }): TextChunk[] {
+export function chunkText(
+  text: string,
+  options?: { chunkSize?: number; overlap?: number },
+): TextChunk[] {
   const chunkSize = options?.chunkSize ?? RAGConfigSvc.getChunkSize();
   const overlap = options?.overlap ?? RAGConfigSvc.getChunkOverlap();
 
@@ -82,7 +83,9 @@ export function chunkText(text: string, options?: { chunkSize?: number; overlap?
   }
 
   if (cleanText.length <= chunkSize) {
-    return [{ content: cleanText, index: 0, metadata: { startChar: 0, endChar: cleanText.length } }];
+    return [
+      { content: cleanText, index: 0, metadata: { startChar: 0, endChar: cleanText.length } },
+    ];
   }
 
   const chunks: TextChunk[] = [];
@@ -100,7 +103,7 @@ export function chunkText(text: string, options?: { chunkSize?: number; overlap?
 
       // Prefer paragraph break, then sentence, then newline
       const breakPoints = [lastParagraph, lastSentence + 1, lastNewline].filter(
-        (bp) => bp > startIndex + chunkSize / 2 && bp <= endIndex
+        (bp) => bp > startIndex + chunkSize / 2 && bp <= endIndex,
       );
 
       if (breakPoints.length > 0) {
@@ -131,7 +134,7 @@ export function chunkText(text: string, options?: { chunkSize?: number; overlap?
  */
 export async function processFileForIndexing(
   storagePath: string,
-  fileType: string | null
+  fileType: string | null,
 ): Promise<TextChunk[]> {
   const text = await extractTextFromFile(storagePath, fileType);
   return chunkText(text);

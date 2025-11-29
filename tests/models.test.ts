@@ -97,7 +97,10 @@ describe("Models Configuration", () => {
       const profiles = getModelProfiles();
       profiles.forEach((profile) => {
         const model = getModelById(profile.defaultModelId);
-        expect(model, `Profile ${profile.id} references missing model ${profile.defaultModelId}`).toBeDefined();
+        expect(
+          model,
+          `Profile ${profile.id} references missing model ${profile.defaultModelId}`,
+        ).toBeDefined();
       });
     });
   });

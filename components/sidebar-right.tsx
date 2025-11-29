@@ -2,11 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
-import {
-  ModelService,
-  type ModelDefinition,
-  type ProviderStatus,
-} from "@/lib/model-service";
+import { ModelService, type ModelDefinition, type ProviderStatus } from "@/lib/model-service";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -64,7 +60,7 @@ export function SidebarRight() {
   const [searchQuery, setSearchQuery] = useState("");
   const [providerStatus, setProviderStatus] = useState<ProviderStatus[]>([]);
   const { modelSettings, updateModelSettings, ragSettings, updateRAGSettings } = useAppStore();
-  const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter } =
+  const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter, updateCharacter } =
     useCharacters();
   const { activeCharacterId, setActiveCharacter, startNewChat } = useChatStore();
   const {
@@ -113,15 +109,32 @@ export function SidebarRight() {
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.tagline?.toLowerCase().includes(q) ||
-        c.description?.toLowerCase().includes(q)
+        c.description?.toLowerCase().includes(q),
     );
   }, [characters, searchQuery]);
 
   // Get active character
   const activeCharacter = useMemo(
     () => characters.find((c) => c.id === activeCharacterId) ?? characters[0],
-    [characters, activeCharacterId]
+    [characters, activeCharacterId],
   );
+
+  const currentRagMode: "heavy" | "light" | "ignore" =
+    activeCharacter &&
+    activeCharacter.ragMode &&
+    ["heavy", "light", "ignore"].includes(activeCharacter.ragMode)
+      ? (activeCharacter.ragMode as "heavy" | "light" | "ignore")
+      : "heavy";
+
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    kbFiles.forEach((file) => {
+      file.tags?.forEach((tag) => {
+        if (tag.trim()) tagSet.add(tag.trim());
+      });
+    });
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+  }, [kbFiles]);
 
   const handleSelectCharacter = (id: string) => {
     setActiveCharacter(id);
@@ -129,6 +142,15 @@ export function SidebarRight() {
 
   const handleNewChatWithCharacter = (characterId: string) => {
     startNewChat(characterId);
+  };
+
+  const handleChangeRagMode = async (mode: "heavy" | "light" | "ignore") => {
+    if (!activeCharacter) return;
+    try {
+      await updateCharacter(activeCharacter.id, { ragMode: mode });
+    } catch (error) {
+      console.error("Failed to update ragMode", error);
+    }
   };
 
   const handleDuplicate = async (id: string) => {
@@ -154,6 +176,33 @@ export function SidebarRight() {
         <h2 className="text-base font-semibold">Character & Memory</h2>
       </div>
 
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-muted-foreground">RAG Intensity</Label>
+        <div className="inline-flex items-center rounded-full bg-sidebar-accent/60 p-0.5 text-[10px]">
+          {[
+            { key: "heavy" as const, label: "Heavy" },
+            { key: "light" as const, label: "Light" },
+            { key: "ignore" as const, label: "Ignore" },
+          ].map((option) => {
+            const isActive = currentRagMode === option.key;
+            return (
+              <button
+                key={option.key}
+                onClick={() => void handleChangeRagMode(option.key)}
+                className={cn(
+                  "px-2 py-0.5 rounded-full transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-sidebar-accent",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <ScrollArea className="flex-1 min-h-0">
         <div className="space-y-6 p-4">
           {/* Active Character Header */}
@@ -161,17 +210,23 @@ export function SidebarRight() {
             <div className="flex items-start gap-3 p-3 rounded-xl bg-sidebar-accent/50 border border-sidebar-border">
               <Avatar className="h-12 w-12 ring-2 ring-primary/20">
                 <AvatarImage src={activeCharacter.avatar ?? undefined} />
-                <AvatarFallback className={cn(getAvatarColor(activeCharacter.name), "text-white font-medium")}>
+                <AvatarFallback
+                  className={cn(getAvatarColor(activeCharacter.name), "text-white font-medium")}
+                >
                   {activeCharacter.name[0]}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{activeCharacter.name}</div>
                 {activeCharacter.tagline && (
-                  <div className="text-xs text-muted-foreground truncate">{activeCharacter.tagline}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {activeCharacter.tagline}
+                  </div>
                 )}
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {activeCharacter.description ?? activeCharacter.systemRole ?? "A helpful AI assistant."}
+                  {activeCharacter.description ??
+                    activeCharacter.systemRole ??
+                    "A helpful AI assistant."}
                 </p>
               </div>
               <DropdownMenu>
@@ -249,12 +304,14 @@ export function SidebarRight() {
                       "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
                       activeCharacterId === char.id
                         ? "bg-sidebar-accent text-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
+                        : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50",
                     )}
                   >
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={char.avatar ?? undefined} />
-                      <AvatarFallback className={cn(getAvatarColor(char.name), "text-white text-xs")}>
+                      <AvatarFallback
+                        className={cn(getAvatarColor(char.name), "text-white text-xs")}
+                      >
                         {char.name[0]}
                       </AvatarFallback>
                     </Avatar>
@@ -298,24 +355,28 @@ export function SidebarRight() {
                         <span
                           className={cn(
                             "w-2 h-2 rounded-full shrink-0",
-                            isAvailable ? "bg-emerald-500" : "bg-red-500"
+                            isAvailable ? "bg-emerald-500" : "bg-red-500",
                           )}
                           title={isAvailable ? "Available" : "Unavailable"}
                         />
                         <span className="truncate font-medium">{model.name}</span>
                       </div>
-                      <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded shrink-0",
-                        model.isLocal
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : "bg-blue-500/20 text-blue-400"
-                      )}>
+                      <span
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded shrink-0",
+                          model.isLocal
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-blue-500/20 text-blue-400",
+                        )}
+                      >
                         {model.isLocal ? "Local" : "Cloud"}
                       </span>
                     </div>
                     {/* Model metadata row */}
                     <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground ml-4">
-                      <span title="Context window">{ModelService.formatContextWindow(model.contextWindow)}</span>
+                      <span title="Context window">
+                        {ModelService.formatContextWindow(model.contextWindow)}
+                      </span>
                       <span className="opacity-40">•</span>
                       <span title="Speed">{ModelService.getSpeedIndicator(model.speed)}</span>
                       <span className="opacity-40">•</span>
@@ -371,16 +432,22 @@ export function SidebarRight() {
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">Knowledge Base</Label>
                 {kbStats && (
-                  <span className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1",
-                    kbStats.embeddingService.available
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-red-500/20 text-red-400"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1",
+                      kbStats.embeddingService.available
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-red-500/20 text-red-400",
+                    )}
+                  >
                     {kbStats.embeddingService.available ? (
-                      <><CheckCircle2 className="h-3 w-3" /> Embeddings Ready</>
+                      <>
+                        <CheckCircle2 className="h-3 w-3" /> Embeddings Ready
+                      </>
                     ) : (
-                      <><AlertCircle className="h-3 w-3" /> No Embedding Service</>
+                      <>
+                        <AlertCircle className="h-3 w-3" /> No Embedding Service
+                      </>
                     )}
                   </span>
                 )}
@@ -468,13 +535,30 @@ export function SidebarRight() {
                             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                               <span>{formatFileSize(file.fileSizeBytes)}</span>
                               {file.chunkCount !== undefined && (
-                                <><span className="opacity-40">•</span><span>{file.chunkCount} chunks</span></>
+                                <>
+                                  <span className="opacity-40">•</span>
+                                  <span>{file.chunkCount} chunks</span>
+                                </>
                               )}
                             </div>
+                            {file.tags && file.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {file.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="px-1.5 py-0.5 rounded-full bg-sidebar-accent/60 text-[9px] text-muted-foreground"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <span className={cn("text-[9px] px-1 py-0.5 rounded", statusStyle.className)}>
+                          <span
+                            className={cn("text-[9px] px-1 py-0.5 rounded", statusStyle.className)}
+                          >
                             {statusStyle.label}
                           </span>
                           <DropdownMenu>
@@ -489,7 +573,9 @@ export function SidebarRight() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-36">
                               {file.status === "paused" ? (
-                                <DropdownMenuItem onClick={() => void updateFile(file.id, "resume")}>
+                                <DropdownMenuItem
+                                  onClick={() => void updateFile(file.id, "resume")}
+                                >
                                   <Play className="h-3.5 w-3.5 mr-2" />
                                   Resume
                                 </DropdownMenuItem>
@@ -540,7 +626,11 @@ export function SidebarRight() {
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Context Recall</Label>
                 <span className="text-xs font-medium bg-primary/20 text-primary px-2 py-0.5 rounded">
-                  {ragSettings.contextRecall > 0.7 ? "High" : ragSettings.contextRecall > 0.3 ? "Medium" : "Low"}
+                  {ragSettings.contextRecall > 0.7
+                    ? "High"
+                    : ragSettings.contextRecall > 0.3
+                      ? "Medium"
+                      : "Low"}
                 </span>
               </div>
               <Slider
@@ -558,6 +648,40 @@ export function SidebarRight() {
                 Determines how much past conversation history is considered.
               </p>
             </div>
+
+            {availableTags.length > 0 && (
+              <div className="space-y-1 pt-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">Use tags for this chat</Label>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {availableTags.map((tag) => {
+                    const isActive = ragSettings.tagFilters.includes(tag);
+                    return (
+                      <Button
+                        key={tag}
+                        variant={isActive ? "secondary" : "outline"}
+                        size="sm"
+                        className="h-6 text-[10px] px-2"
+                        onClick={() => {
+                          const next = isActive
+                            ? ragSettings.tagFilters.filter((t) => t !== tag)
+                            : [...ragSettings.tagFilters, tag];
+                          updateRAGSettings({ tagFilters: next });
+                        }}
+                      >
+                        {tag}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {ragSettings.tagFilters.length > 0 && (
+                  <div className="text-[10px] text-muted-foreground/80">
+                    Filtering KB to tags: {ragSettings.tagFilters.join(", ")}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </ScrollArea>

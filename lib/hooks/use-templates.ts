@@ -100,14 +100,14 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
       eventBus.emit(Events.TEMPLATE_CREATED, newTemplate);
       return newTemplate;
     },
-    []
+    [],
   );
 
   const createTemplateFromCharacter = useCallback(
     async (characterId: string, name: string, icon?: string) => {
       return createTemplate({ fromCharacterId: characterId, name, icon });
     },
-    [createTemplate]
+    [createTemplate],
   );
 
   const updateTemplate = useCallback(
@@ -135,7 +135,7 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
         throw err;
       }
     },
-    [templates]
+    [templates],
   );
 
   const deleteTemplate = useCallback(
@@ -155,7 +155,7 @@ export function useTemplates(options: UseTemplatesOptions = {}) {
         throw err;
       }
     },
-    [templates]
+    [templates],
   );
 
   return {

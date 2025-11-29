@@ -7,7 +7,12 @@
 
 export { RAGConfigSvc, type RAGConfig } from "./config";
 export { FileStorage, getMimeType, type StoredFile, type StorageProvider } from "./storage";
-export { generateEmbedding, generateEmbeddings, checkEmbeddingAvailability, type EmbeddingResult } from "./embedding";
+export {
+  generateEmbedding,
+  generateEmbeddings,
+  checkEmbeddingAvailability,
+  type EmbeddingResult,
+} from "./embedding";
 export { chunkText, extractTextFromFile, processFileForIndexing, type TextChunk } from "./chunking";
 export {
   retrieveRelevantMemories,
@@ -23,3 +28,8 @@ export {
   getCharacterKBStats,
   type IndexingResult,
 } from "./indexing";
+export {
+  computeEffectiveRagConfig,
+  type EffectiveRagConfig,
+  type RagConfigSources,
+} from "./effective-config";

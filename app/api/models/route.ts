@@ -3,7 +3,7 @@ import { ModelService } from "@/lib/model-service";
 
 /**
  * GET /api/models - List all available models with their status
- * 
+ *
  * Query params:
  * - checkStatus=true: Also check provider availability (slower)
  */
@@ -34,9 +34,6 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("[models] GET error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch models" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch models" }, { status: 500 });
   }
 }

@@ -41,12 +41,22 @@ class LocalStorageProvider implements StorageProvider {
       .slice(0, 100);
   }
 
-  private getFilePath(userId: string, characterId: string, fileId: string, fileName: string): string {
+  private getFilePath(
+    userId: string,
+    characterId: string,
+    fileId: string,
+    fileName: string,
+  ): string {
     const sanitized = this.sanitizeFileName(fileName);
     return join(this.baseDir, userId, characterId, `${fileId}-${sanitized}`);
   }
 
-  async store(userId: string, characterId: string, file: Blob, fileName: string): Promise<StoredFile> {
+  async store(
+    userId: string,
+    characterId: string,
+    file: Blob,
+    fileName: string,
+  ): Promise<StoredFile> {
     const fileId = randomUUID();
     const filePath = this.getFilePath(userId, characterId, fileId, fileName);
 

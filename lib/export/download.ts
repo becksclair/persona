@@ -34,10 +34,7 @@ export function slugify(text: string): string {
 /**
  * Generate a safe filename for chat exports.
  */
-export function generateExportFilename(
-  characterName: string,
-  format: "json" | "md"
-): string {
+export function generateExportFilename(characterName: string, format: "json" | "md"): string {
   const slug = slugify(characterName) || "chat";
   const timestamp = new Date().toISOString().slice(0, 10);
   return `${slug}-${timestamp}.${format}`;

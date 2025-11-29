@@ -21,12 +21,7 @@ export function ChatErrorBanner({ error, onRetry }: ChatErrorBannerProps) {
         <p className="text-muted-foreground text-xs">{error.message}</p>
       </div>
       {error.retryable && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRetry}
-          className="shrink-0"
-        >
+        <Button variant="outline" size="sm" onClick={onRetry} className="shrink-0">
           <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
           Retry
         </Button>

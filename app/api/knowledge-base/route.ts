@@ -61,7 +61,7 @@ export async function GET(req: Request) {
       files.map(async (file) => ({
         ...file,
         chunkCount: await getFileMemoryItemCount(file.id),
-      }))
+      })),
     );
 
     return NextResponse.json(filesWithStats);

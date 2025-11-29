@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { isLmStudioRunning, sendChatMessage, waitForAssistantResponse, selectModel } from "./helpers";
+import {
+  isLmStudioRunning,
+  sendChatMessage,
+  waitForAssistantResponse,
+  selectModel,
+} from "./helpers";
 
 /**
  * E2E tests for copy and export functionality.

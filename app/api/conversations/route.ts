@@ -36,6 +36,7 @@ export async function GET(req: Request) {
         isArchived: conversations.isArchived,
         createdAt: conversations.createdAt,
         updatedAt: conversations.updatedAt,
+        ragOverrides: conversations.ragOverrides,
       })
       .from(conversations)
       .leftJoin(characters, eq(conversations.characterId, characters.id))
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
           lastMessage: lastMessage?.content?.slice(0, 100) ?? null,
           lastMessageRole: lastMessage?.role ?? null,
         };
-      })
+      }),
     );
 
     return NextResponse.json(conversationsWithPreview);
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { characterId, title } = body;
+    const { characterId, title, ragOverrides } = body;
 
     const [conversation] = await db
       .insert(conversations)
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
         userId: user.userId,
         characterId: characterId ?? null,
         title: title ?? null,
+        ragOverrides: ragOverrides ?? null,
       })
       .returning();
 

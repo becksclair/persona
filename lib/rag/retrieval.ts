@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { knowledgeBaseFiles, conversations } from "@/lib/db/schema";
+import type { RAGMode } from "@/lib/types";
 import { eq, and, sql } from "drizzle-orm";
 import { RAGConfigSvc } from "./config";
 import { generateEmbedding } from "./embedding";
@@ -35,19 +36,29 @@ export async function retrieveRelevantMemories(options: {
   conversationId?: string | null;
   query: string;
   topK?: number;
+  ragMode?: RAGMode;
+  tagFilters?: string[];
 }): Promise<RetrievalResult> {
   const { userId, characterId, query } = options;
-  const topK = Math.min(
-    options.topK ?? RAGConfigSvc.getDefaultTopK(),
-    RAGConfigSvc.getMaxTopK()
-  );
+  const ragMode = options.ragMode ?? "heavy";
+  const baseTopK = options.topK ?? RAGConfigSvc.getDefaultTopK();
+  const effectiveTopK =
+    ragMode === "light" ? Math.max(1, Math.round(baseTopK / 2)) : baseTopK;
+  const topK = Math.min(effectiveTopK, RAGConfigSvc.getMaxTopK());
   const minScore = RAGConfigSvc.getMinSimilarityScore();
+  const activeTagFilters =
+    options.tagFilters?.map((t) => t.trim()).filter((t) => t.length > 0) ?? [];
+
+  // RAG explicitly disabled for this character
+  if (ragMode === "ignore") {
+    return { memories: [], query, topK: 0 };
+  }
 
   // Guard against malformed characterId to avoid UUID cast errors / injection attempts
   const isValidUuid =
     typeof characterId === "string" &&
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-      characterId
+      characterId,
     );
   const useCharacterId = !!characterId && isValidUuid;
 
@@ -73,12 +84,7 @@ export async function retrieveRelevantMemories(options: {
     const pausedFiles = await db
       .select({ id: knowledgeBaseFiles.id })
       .from(knowledgeBaseFiles)
-      .where(
-        and(
-          eq(knowledgeBaseFiles.userId, userId),
-          eq(knowledgeBaseFiles.status, "paused")
-        )
-      );
+      .where(and(eq(knowledgeBaseFiles.userId, userId), eq(knowledgeBaseFiles.status, "paused")));
     const pausedFileIds = pausedFiles.map((f) => f.id);
 
     // Build embedding vector string for pgvector (safe - only numbers)
@@ -123,27 +129,38 @@ export async function retrieveRelevantMemories(options: {
               : sql``
           }
         )
-        ${archivedIds.length > 0 
-          ? sql`AND NOT (source_type = 'message' AND source_id IN (
+        ${
+          archivedIds.length > 0
+            ? sql`AND NOT (source_type = 'message' AND source_id IN (
               SELECT id FROM messages WHERE conversation_id = ANY(${archivedIds}::uuid[])
-            ))` 
-          : sql``}
-        ${pausedFileIds.length > 0 
-          ? sql`AND NOT (source_type = 'file' AND source_id = ANY(${pausedFileIds}::uuid[]))` 
-          : sql``}
+            ))`
+            : sql``
+        }
+        ${
+          pausedFileIds.length > 0
+            ? sql`AND NOT (source_type = 'file' AND source_id = ANY(${pausedFileIds}::uuid[]))`
+            : sql``
+        }
+        ${
+          activeTagFilters.length > 0
+            ? sql`AND tags @> ${JSON.stringify(activeTagFilters)}::jsonb`
+            : sql``
+        }
         AND 1 - (embedding <=> ${embeddingLiteral}::vector) >= ${minScore}
       ORDER BY embedding <=> ${embeddingLiteral}::vector
       LIMIT ${topK}
     `);
 
-    const memories: RetrievedMemory[] = (results as unknown as Array<{
-      id: string;
-      content: string;
-      source_type: string;
-      source_id: string | null;
-      tags: string[] | null;
-      similarity: number;
-    }>).map((row) => ({
+    const memories: RetrievedMemory[] = (
+      results as unknown as Array<{
+        id: string;
+        content: string;
+        source_type: string;
+        source_id: string | null;
+        tags: string[] | null;
+        similarity: number;
+      }>
+    ).map((row) => ({
       id: row.id,
       content: row.content,
       sourceType: row.source_type,

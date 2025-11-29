@@ -14,11 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Plus,
   Search,
@@ -106,7 +102,7 @@ function ChatItem({
       className={cn(
         "group flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm transition-all cursor-pointer",
         "hover:bg-sidebar-accent/70",
-        isActive && "bg-sidebar-accent ring-1 ring-primary/30 shadow-sm"
+        isActive && "bg-sidebar-accent ring-1 ring-primary/30 shadow-sm",
       )}
       onClick={onSelect}
     >
@@ -195,7 +191,7 @@ export function SidebarLeft() {
         !c.isArchived &&
         ((c.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.characterName?.toLowerCase().includes(searchQuery.toLowerCase())) ??
-          true)
+          true),
     );
   }, [activeConversations, searchQuery]);
 
@@ -205,7 +201,7 @@ export function SidebarLeft() {
         c.isArchived &&
         ((c.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.characterName?.toLowerCase().includes(searchQuery.toLowerCase())) ??
-          true)
+          true),
     );
   }, [archivedConversations, searchQuery]);
 
@@ -218,7 +214,9 @@ export function SidebarLeft() {
   };
 
   const handleRename = (id: string) => {
-    const conv = activeConversations.find((c) => c.id === id) || archivedConversations.find((c) => c.id === id);
+    const conv =
+      activeConversations.find((c) => c.id === id) ||
+      archivedConversations.find((c) => c.id === id);
     setRenameValue(conv?.title ?? "");
     setRenamingId(id);
   };
@@ -283,7 +281,7 @@ export function SidebarLeft() {
           onClick={handleNewChat}
           className={cn(
             "w-full justify-center gap-2 bg-primary hover:bg-primary/90",
-            isPendingNewChat && "ring-2 ring-primary/50"
+            isPendingNewChat && "ring-2 ring-primary/50",
           )}
           size="sm"
         >
@@ -357,17 +355,14 @@ export function SidebarLeft() {
                     onUnarchive={() => void handleUnarchive(conv.id)}
                     onDelete={() => void handleDelete(conv.id)}
                   />
-                )
+                ),
               )}
 
               {/* Archived section - always show trigger, lazy-load content */}
               <Collapsible open={showArchived} onOpenChange={setShowArchived}>
                 <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
                   <ChevronRight
-                    className={cn(
-                      "h-3 w-3 transition-transform",
-                      showArchived && "rotate-90"
-                    )}
+                    className={cn("h-3 w-3 transition-transform", showArchived && "rotate-90")}
                   />
                   Archived {archivedConvs.length > 0 && `(${archivedConvs.length})`}
                 </CollapsibleTrigger>

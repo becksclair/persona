@@ -81,10 +81,7 @@ export async function POST(req: Request, context: RouteContext) {
       .returning();
 
     // Update conversation timestamp
-    await db
-      .update(conversations)
-      .set({ updatedAt: new Date() })
-      .where(eq(conversations.id, id));
+    await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, id));
 
     return NextResponse.json(message, { status: 201 });
   } catch (error) {

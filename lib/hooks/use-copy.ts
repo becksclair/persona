@@ -36,7 +36,7 @@ export function useCopy(options: UseCopyOptions = {}): UseCopyReturn {
       }
       return success;
     },
-    [resetDelay, successMessage]
+    [resetDelay, successMessage],
   );
 
   const isCopied = useCallback((id: string) => copiedId === id, [copiedId]);

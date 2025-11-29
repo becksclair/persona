@@ -72,7 +72,13 @@ export async function indexFile(fileId: string): Promise<IndexingResult> {
         .update(knowledgeBaseFiles)
         .set({ status: "failed", updatedAt: new Date() })
         .where(eq(knowledgeBaseFiles.id, fileId));
-      return { fileId, success: false, chunksCreated: 0, totalChunks: 0, error: "No text content extracted" };
+      return {
+        fileId,
+        success: false,
+        chunksCreated: 0,
+        totalChunks: 0,
+        error: "No text content extracted",
+      };
     }
 
     // Generate embeddings first (outside transaction to avoid long-running txn)
@@ -133,7 +139,9 @@ export async function indexFile(fileId: string): Promise<IndexingResult> {
       .where(eq(knowledgeBaseFiles.id, fileId));
 
     if (failedChunks.length > 0) {
-      console.warn(`[Indexing] ${failedChunks.length}/${chunks.length} chunks failed for file ${fileId}`);
+      console.warn(
+        `[Indexing] ${failedChunks.length}/${chunks.length} chunks failed for file ${fileId}`,
+      );
     }
 
     return {
@@ -210,8 +218,8 @@ export async function getCharacterKBStats(characterId: string): Promise<{
       and(
         eq(memoryItems.ownerType, "character"),
         eq(memoryItems.ownerId, characterId),
-        eq(memoryItems.sourceType, "file")
-      )
+        eq(memoryItems.sourceType, "file"),
+      ),
     );
 
   return {

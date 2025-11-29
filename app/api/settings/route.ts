@@ -5,13 +5,14 @@ import { getCurrentUser, getUserSettings, updateUserSettings } from "@/lib/auth"
 // Zod schema for settings validation
 const ThemeSchema = z.enum(["light", "dark", "system"]);
 
-const SettingsUpdateSchema = z.object({
-  enterSendsMessage: z.boolean().optional(),
-  theme: ThemeSchema.optional(),
-}).refine(
-  (data) => Object.keys(data).length > 0,
-  { message: "At least one field must be provided" }
-);
+const SettingsUpdateSchema = z
+  .object({
+    enterSendsMessage: z.boolean().optional(),
+    theme: ThemeSchema.optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+  });
 
 // GET /api/settings - Get current user settings
 export async function GET() {
@@ -43,10 +44,7 @@ export async function PATCH(req: Request) {
     const result = SettingsUpdateSchema.safeParse(body);
     if (!result.success) {
       const errorMessage = result.error.issues.map((e) => e.message).join(", ");
-      return NextResponse.json(
-        { error: `Invalid settings: ${errorMessage}` },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: `Invalid settings: ${errorMessage}` }, { status: 400 });
     }
 
     const updates = result.data;

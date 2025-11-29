@@ -55,7 +55,7 @@ export function ChatInput({
         }
       }
     },
-    [enterSendsMessage, onSubmit, onBlur]
+    [enterSendsMessage, onSubmit, onBlur],
   );
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -109,7 +109,7 @@ export function ChatInput({
                 "h-10 w-10 transition-all",
                 value.trim()
                   ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-muted text-muted-foreground",
               )}
               aria-label="Send message"
             >

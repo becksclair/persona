@@ -57,9 +57,7 @@ export function buildExportData(options: ExportOptions): ChatExportData {
       id: m.id,
       role: m.role as ExportMessage["role"],
       content: m.content,
-      createdAt: m.createdAt
-        ? new Date(m.createdAt).toISOString()
-        : new Date().toISOString(),
+      createdAt: m.createdAt ? new Date(m.createdAt).toISOString() : new Date().toISOString(),
     })),
   };
 }

@@ -141,6 +141,18 @@ describe("RAG Retrieval", () => {
 
       expect(result).toBeDefined();
     });
+
+		it("returns no memories when ragMode is ignore", async () => {
+			const result = await retrieveRelevantMemories({
+				userId: TEST_UUIDS.nonExistentUser,
+				query: "test query",
+				ragMode: "ignore",
+				topK: 10,
+			});
+
+			expect(result.topK).toBe(0);
+			expect(result.memories).toEqual([]);
+		});
   });
 
   describe("formatMemoriesForPrompt", () => {
@@ -171,9 +183,30 @@ describe("RAG Retrieval", () => {
 
     it("formats multiple memories with indices", () => {
       const memories: RetrievedMemory[] = [
-        { id: "1", content: "First memory", sourceType: "file", sourceId: null, similarity: 0.9, tags: null },
-        { id: "2", content: "Second memory", sourceType: "file", sourceId: null, similarity: 0.8, tags: null },
-        { id: "3", content: "Third memory", sourceType: "file", sourceId: null, similarity: 0.7, tags: null },
+        {
+          id: "1",
+          content: "First memory",
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0.9,
+          tags: null,
+        },
+        {
+          id: "2",
+          content: "Second memory",
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0.8,
+          tags: null,
+        },
+        {
+          id: "3",
+          content: "Third memory",
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0.7,
+          tags: null,
+        },
       ];
 
       const result = formatMemoriesForPrompt(memories);
@@ -189,7 +222,14 @@ describe("RAG Retrieval", () => {
     it("truncates long content with ellipsis", () => {
       const longContent = "A".repeat(500);
       const memories: RetrievedMemory[] = [
-        { id: "1", content: longContent, sourceType: "file", sourceId: null, similarity: 0.9, tags: null },
+        {
+          id: "1",
+          content: longContent,
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0.9,
+          tags: null,
+        },
       ];
 
       const result = formatMemoriesForPrompt(memories);
@@ -200,7 +240,14 @@ describe("RAG Retrieval", () => {
 
     it("includes context instructions", () => {
       const memories: RetrievedMemory[] = [
-        { id: "1", content: "Test content", sourceType: "file", sourceId: null, similarity: 0.9, tags: null },
+        {
+          id: "1",
+          content: "Test content",
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0.9,
+          tags: null,
+        },
       ];
 
       const result = formatMemoriesForPrompt(memories);
@@ -219,9 +266,30 @@ describe("RAG Retrieval", () => {
 
     it("extracts IDs from memories", () => {
       const memories: RetrievedMemory[] = [
-        { id: "uuid-1", content: "", sourceType: "file", sourceId: null, similarity: 0, tags: null },
-        { id: "uuid-2", content: "", sourceType: "file", sourceId: null, similarity: 0, tags: null },
-        { id: "uuid-3", content: "", sourceType: "file", sourceId: null, similarity: 0, tags: null },
+        {
+          id: "uuid-1",
+          content: "",
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0,
+          tags: null,
+        },
+        {
+          id: "uuid-2",
+          content: "",
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0,
+          tags: null,
+        },
+        {
+          id: "uuid-3",
+          content: "",
+          sourceType: "file",
+          sourceId: null,
+          similarity: 0,
+          tags: null,
+        },
       ];
 
       const result = getMemoryItemIds(memories);

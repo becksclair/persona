@@ -26,9 +26,10 @@ test.describe("Chat Interface", () => {
 
   test("displays send button", async ({ page }) => {
     // Look for send button (could be an icon button)
-    const sendButton = page.locator("button").filter({ hasText: /send/i }).or(
-      page.locator('button[type="submit"]')
-    );
+    const sendButton = page
+      .locator("button")
+      .filter({ hasText: /send/i })
+      .or(page.locator('button[type="submit"]'));
     await expect(sendButton.first()).toBeVisible();
   });
 });

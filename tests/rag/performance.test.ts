@@ -60,7 +60,7 @@ function formatBenchmark(result: BenchmarkResult): string {
 function runBenchmark(
   operation: string,
   times: number[],
-  throughputCalc?: { total: number; unit: string }
+  throughputCalc?: { total: number; unit: string },
 ): BenchmarkResult {
   const totalMs = times.reduce((a, b) => a + b, 0);
   const result: BenchmarkResult = {
@@ -175,7 +175,10 @@ describe("RAG Performance Benchmarks", () => {
       const results: Array<{ size: number; totalMs: number; perItem: number }> = [];
 
       for (const size of batchSizes) {
-        const texts = Array.from({ length: size }, (_, i) => `Test document number ${i + 1} for batch processing.`);
+        const texts = Array.from(
+          { length: size },
+          (_, i) => `Test document number ${i + 1} for batch processing.`,
+        );
 
         const start = performance.now();
         await generateEmbeddings(texts, { concurrency: 2 });
@@ -195,7 +198,7 @@ describe("RAG Performance Benchmarks", () => {
       results.forEach((r) => {
         const itemsPerSec = (r.size / r.totalMs) * 1000;
         console.log(
-          `│ ${String(r.size).padEnd(10)} │ ${r.totalMs.toFixed(0).padStart(11)} │ ${r.perItem.toFixed(0).padStart(10)} │ ${itemsPerSec.toFixed(2).padStart(13)} │`
+          `│ ${String(r.size).padEnd(10)} │ ${r.totalMs.toFixed(0).padStart(11)} │ ${r.perItem.toFixed(0).padStart(10)} │ ${itemsPerSec.toFixed(2).padStart(13)} │`,
         );
       });
       console.log("└────────────┴─────────────┴────────────┴───────────────┘");
@@ -226,8 +229,12 @@ describe("RAG Performance Benchmarks", () => {
       console.log("│ Concurrency   │ Total (ms)  │ Speedup    │");
       console.log("├───────────────┼─────────────┼────────────┤");
       console.log(`│ Sequential    │ ${seqTime.toFixed(0).padStart(11)} │ 1.00x      │`);
-      console.log(`│ Concurrent x2 │ ${conTime.toFixed(0).padStart(11)} │ ${(seqTime / conTime).toFixed(2).padStart(5)}x     │`);
-      console.log(`│ Concurrent x3 │ ${con3Time.toFixed(0).padStart(11)} │ ${(seqTime / con3Time).toFixed(2).padStart(5)}x     │`);
+      console.log(
+        `│ Concurrent x2 │ ${conTime.toFixed(0).padStart(11)} │ ${(seqTime / conTime).toFixed(2).padStart(5)}x     │`,
+      );
+      console.log(
+        `│ Concurrent x3 │ ${con3Time.toFixed(0).padStart(11)} │ ${(seqTime / con3Time).toFixed(2).padStart(5)}x     │`,
+      );
       console.log("└───────────────┴─────────────┴────────────┘");
 
       // Concurrent should be at least somewhat faster
@@ -241,7 +248,9 @@ describe("RAG Performance Benchmarks", () => {
       const results: Array<{ chars: number; chunks: number; timeMs: number }> = [];
 
       for (const size of documentSizes) {
-        const document = "This is a sample sentence for testing chunking performance. ".repeat(Math.ceil(size / 60));
+        const document = "This is a sample sentence for testing chunking performance. ".repeat(
+          Math.ceil(size / 60),
+        );
         const times: number[] = [];
         let chunkCount = 0;
 
@@ -266,7 +275,7 @@ describe("RAG Performance Benchmarks", () => {
       results.forEach((r) => {
         const charsPerMs = r.chars / r.timeMs;
         console.log(
-          `│ ${(r.chars / 1000).toFixed(0).padStart(7)}K   │ ${String(r.chunks).padStart(10)} │ ${r.timeMs.toFixed(2).padStart(10)} │ ${charsPerMs.toFixed(0).padStart(14)} │`
+          `│ ${(r.chars / 1000).toFixed(0).padStart(7)}K   │ ${String(r.chunks).padStart(10)} │ ${r.timeMs.toFixed(2).padStart(10)} │ ${charsPerMs.toFixed(0).padStart(14)} │`,
         );
       });
       console.log("└─────────────┴────────────┴────────────┴────────────────┘");
@@ -303,7 +312,7 @@ describe("RAG Performance Benchmarks", () => {
         const embedStart = performance.now();
         await generateEmbeddings(
           chunksToEmbed.map((c) => c.content),
-          { concurrency: 2 }
+          { concurrency: 2 },
         );
         const embedTime = performance.now() - embedStart;
 
@@ -322,7 +331,7 @@ describe("RAG Performance Benchmarks", () => {
       console.log("├─────────────┼────────────┼─────────────┼─────────────┼─────────────┤");
       results.forEach((r) => {
         console.log(
-          `│ ${(r.docSize / 1000).toFixed(0).padStart(7)}K   │ ${String(r.chunks).padStart(10)} │ ${r.chunkTimeMs.toFixed(0).padStart(11)} │ ${r.embedTimeMs.toFixed(0).padStart(11)} │ ${r.totalTimeMs.toFixed(0).padStart(11)} │`
+          `│ ${(r.docSize / 1000).toFixed(0).padStart(7)}K   │ ${String(r.chunks).padStart(10)} │ ${r.chunkTimeMs.toFixed(0).padStart(11)} │ ${r.embedTimeMs.toFixed(0).padStart(11)} │ ${r.totalTimeMs.toFixed(0).padStart(11)} │`,
         );
       });
       console.log("└─────────────┴────────────┴─────────────┴─────────────┴─────────────┘");
@@ -426,7 +435,7 @@ describe("Memory and Resource Tests", () => {
       const total = vectorStore + textStore;
 
       console.log(
-        `│ ${(size / 1000).toFixed(0).padStart(7)}K   │ ${String(estChunks).padStart(10)} │ ${vectorStore.toFixed(0).padStart(9)} KB │ ${total.toFixed(0).padStart(9)} KB │`
+        `│ ${(size / 1000).toFixed(0).padStart(7)}K   │ ${String(estChunks).padStart(10)} │ ${vectorStore.toFixed(0).padStart(9)} KB │ ${total.toFixed(0).padStart(9)} KB │`,
       );
     }
     console.log("└─────────────┴────────────┴──────────────┴──────────────┘");

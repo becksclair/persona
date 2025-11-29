@@ -18,6 +18,7 @@ describe("AppStore", () => {
         enabled: false,
         contextRecall: 0.5,
         knowledgeBase: [],
+        tagFilters: [],
       },
     });
   });
@@ -68,7 +69,7 @@ describe("AppStore", () => {
       updateModelSettings({ lmStudioBaseUrl: "http://192.168.1.100:1234/v1" });
 
       expect(useAppStore.getState().modelSettings.lmStudioBaseUrl).toBe(
-        "http://192.168.1.100:1234/v1"
+        "http://192.168.1.100:1234/v1",
       );
     });
 

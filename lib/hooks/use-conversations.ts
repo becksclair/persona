@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { eventBus, Events } from "@/lib/events";
+import { type ConversationRagOverrides } from "@/lib/types";
 
 export interface Conversation {
   id: string;
@@ -14,6 +15,7 @@ export interface Conversation {
   updatedAt: string;
   lastMessage: string | null;
   lastMessageRole: string | null;
+  ragOverrides?: ConversationRagOverrides | null;
 }
 
 interface UseConversationsOptions {
@@ -44,7 +46,7 @@ export function useConversations(options: UseConversationsOptions | boolean = {}
       const res = await fetch(`/api/conversations?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch conversations");
 
-      const data = await res.json();
+      const data: Conversation[] = await res.json();
       setConversations(data);
       setError(null);
       hasFetched.current = true;
@@ -87,26 +89,36 @@ export function useConversations(options: UseConversationsOptions | boolean = {}
   }, [fetchConversations, enabled]);
 
   const createConversation = useCallback(
-    async (characterId?: string, title?: string) => {
+    async (
+      payload?: { characterId?: string; title?: string; ragOverrides?: ConversationRagOverrides | null },
+    ) => {
       const res = await fetch("/api/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId, title }),
+        body: JSON.stringify(payload ?? {}),
       });
 
       if (!res.ok) throw new Error("Failed to create conversation");
-      const newConv = await res.json();
+      const newConv: Conversation = await res.json();
       const convWithDefaults = { ...newConv, lastMessage: null, lastMessageRole: null };
 
       // Broadcast to all listeners (including this component)
       eventBus.emit(Events.CONVERSATION_CREATED, convWithDefaults);
       return newConv;
     },
-    []
+    [],
   );
 
   const updateConversation = useCallback(
-    async (id: string, updates: { title?: string; isArchived?: boolean; characterId?: string }) => {
+    async (
+      id: string,
+      updates: {
+        title?: string;
+        isArchived?: boolean;
+        characterId?: string;
+        ragOverrides?: ConversationRagOverrides | null;
+      },
+    ) => {
       // Optimistic update
       const prevConvs = [...conversations];
       setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
@@ -126,46 +138,52 @@ export function useConversations(options: UseConversationsOptions | boolean = {}
 
         const updated = await res.json();
         // Broadcast update (will sync state in other components)
-        eventBus.emit(Events.CONVERSATION_UPDATED, { ...conversations.find((c) => c.id === id), ...updated });
+        eventBus.emit(Events.CONVERSATION_UPDATED, {
+          ...prevConvs.find((c) => c.id === id),
+          ...updated,
+        });
         return updated;
       } catch (err) {
         setConversations(prevConvs);
         throw err;
       }
     },
-    [conversations]
+    [conversations],
   );
 
-  const deleteConversation = useCallback(async (id: string) => {
-    // Optimistic delete
-    const prevConvs = [...conversations];
-    setConversations((prev) => prev.filter((c) => c.id !== id));
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      // Optimistic delete
+      const prevConvs = [...conversations];
+      setConversations((prev) => prev.filter((c) => c.id !== id));
 
-    try {
-      const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
-      if (!res.ok) {
+      try {
+        const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          setConversations(prevConvs);
+          throw new Error("Failed to delete conversation");
+        }
+        eventBus.emit(Events.CONVERSATION_DELETED, id);
+      } catch (err) {
         setConversations(prevConvs);
-        throw new Error("Failed to delete conversation");
+        throw err;
       }
-      eventBus.emit(Events.CONVERSATION_DELETED, id);
-    } catch (err) {
-      setConversations(prevConvs);
-      throw err;
-    }
-  }, [conversations]);
+    },
+    [conversations],
+  );
 
   const archiveConversation = useCallback(
     async (id: string) => {
       return updateConversation(id, { isArchived: true });
     },
-    [updateConversation]
+    [updateConversation],
   );
 
   const unarchiveConversation = useCallback(
     async (id: string) => {
       return updateConversation(id, { isArchived: false });
     },
-    [updateConversation]
+    [updateConversation],
   );
 
   return {

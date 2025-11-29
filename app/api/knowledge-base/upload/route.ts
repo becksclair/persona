@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const maxSize = RAGConfigSvc.getMaxFileSizeBytes();
     if (file.size > maxSize) {
       return Errors.invalidRequest(
-        `File size exceeds limit (${RAGConfigSvc.formatFileSize(maxSize)})`
+        `File size exceeds limit (${RAGConfigSvc.formatFileSize(maxSize)})`,
       );
     }
 
@@ -59,7 +59,10 @@ export async function POST(req: Request) {
 
     // Parse tags
     const tags = tagsStr
-      ? tagsStr.split(",").map((t) => t.trim()).filter(Boolean)
+      ? tagsStr
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
       : [];
 
     // Create database record
@@ -93,7 +96,7 @@ export async function POST(req: Request) {
         file: updatedFile,
         indexing: indexResult,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("[knowledge-base/upload] POST error:", error);

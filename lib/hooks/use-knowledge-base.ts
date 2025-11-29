@@ -130,7 +130,7 @@ export function useKnowledgeBase(characterId: string | null) {
         setUploading(false);
       }
     },
-    [characterId, fetchFiles, fetchStats]
+    [characterId, fetchFiles, fetchStats],
   );
 
   // Update file (pause, resume, reindex)
@@ -159,7 +159,7 @@ export function useKnowledgeBase(characterId: string | null) {
         throw err;
       }
     },
-    [fetchFiles, fetchStats]
+    [fetchFiles, fetchStats],
   );
 
   // Delete file
@@ -186,7 +186,7 @@ export function useKnowledgeBase(characterId: string | null) {
         throw err;
       }
     },
-    [fetchFiles, fetchStats]
+    [fetchFiles, fetchStats],
   );
 
   // Fetch on mount and when characterId changes

@@ -41,9 +41,7 @@ export async function isLmStudioAvailable(baseUrl = LM_STUDIO_BASE_URL): Promise
  * Fetch available models from LM Studio
  * Returns empty array if LM Studio is not running
  */
-export async function fetchLmStudioModels(
-  baseUrl = LM_STUDIO_BASE_URL
-): Promise<LmStudioModel[]> {
+export async function fetchLmStudioModels(baseUrl = LM_STUDIO_BASE_URL): Promise<LmStudioModel[]> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);

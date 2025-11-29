@@ -320,7 +320,9 @@ describe("LM Studio Integration (bge-m3)", () => {
       // Related queries should be more similar
       expect(simRelated).toBeGreaterThan(simUnrelated);
       expect(simRelated).toBeGreaterThan(SEMANTIC_PAIRS.similar.expectedSimilarity);
-      console.log(`Semantic similarity - related: ${simRelated.toFixed(3)}, unrelated: ${simUnrelated.toFixed(3)}`);
+      console.log(
+        `Semantic similarity - related: ${simRelated.toFixed(3)}, unrelated: ${simUnrelated.toFixed(3)}`,
+      );
     });
 
     it("handles multilingual text", async () => {

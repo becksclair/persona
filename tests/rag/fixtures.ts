@@ -30,7 +30,8 @@ export const TEST_UUIDS = {
 // Sample texts for embedding tests
 export const TEST_TEXTS = {
   short: "Hello, world!",
-  medium: "The quick brown fox jumps over the lazy dog. This is a test sentence for embedding generation.",
+  medium:
+    "The quick brown fox jumps over the lazy dog. This is a test sentence for embedding generation.",
   long: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.`,
   empty: "",
   whitespace: "   \n\t   ",
@@ -65,7 +66,9 @@ export const TEST_DOCUMENTS = {
 It contains some basic information about testing.
 The chunking algorithm should handle this properly.`,
   longText: Array(20)
-    .fill("This is a paragraph of text that will be repeated to create a long document for chunking tests.")
+    .fill(
+      "This is a paragraph of text that will be repeated to create a long document for chunking tests.",
+    )
     .join("\n\n"),
   markdown: `# Heading 1
 

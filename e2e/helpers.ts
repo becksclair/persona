@@ -43,10 +43,7 @@ export async function resetPageState(page: Page): Promise<void> {
 /**
  * Wait for chat response with proper timeout handling
  */
-export async function waitForAssistantResponse(
-  page: Page,
-  timeoutMs = 30000
-): Promise<boolean> {
+export async function waitForAssistantResponse(page: Page, timeoutMs = 30000): Promise<boolean> {
   try {
     await page.locator('[data-testid="assistant-message"]').waitFor({
       state: "visible",

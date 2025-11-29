@@ -10,7 +10,11 @@ import { useSettings } from "@/lib/hooks/use-settings";
 import { useCopy } from "@/lib/hooks/use-copy";
 import { useChatExport } from "@/lib/hooks/use-chat-export";
 import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
+import { useConversations } from "@/lib/hooks/use-conversations";
+import { useKnowledgeBase } from "@/lib/hooks/use-knowledge-base";
 import { eventBus, Events } from "@/lib/events";
+import type { ConversationRagOverrides, RAGMode, ModelSettings } from "@/lib/types";
+import { computeEffectiveRagConfig } from "@/lib/rag/effective-config";
 import { SettingsDialog } from "@/components/settings-dialog";
 
 import { ChatHeader } from "./chat-header";
@@ -19,62 +23,145 @@ import { ChatInput } from "./chat-input";
 import { ChatErrorBanner } from "./chat-error";
 import { getMessageText, type ChatError } from "./types";
 
+export function buildChatRequestBody(params: {
+  characterId: string | null | undefined;
+  conversationId: string | null | undefined;
+  modelSettings: ModelSettings;
+  enableRAG: boolean;
+  ragMode: RAGMode;
+  tagFilters?: string[] | undefined;
+}) {
+  return {
+    characterId: params.characterId ?? "sam",
+    conversationId: params.conversationId ?? undefined,
+    modelSettings: params.modelSettings,
+    enableRAG: params.enableRAG,
+    ragMode: params.ragMode,
+    tagFilters: params.tagFilters,
+  };
+}
+
 export function ChatInterface() {
-  const { modelSettings } = useAppStore();
+  const { modelSettings, ragSettings } = useAppStore();
   const { characters } = useCharacters();
-  const { activeCharacterId, isPendingNewChat, confirmNewChat } = useChatStore();
+  const { activeConversationId, activeCharacterId, isPendingNewChat, confirmNewChat } =
+    useChatStore();
   const { settings } = useSettings();
   const { copiedId, copy } = useCopy({ successMessage: "Message copied to clipboard" });
+  const { conversations, updateConversation } = useConversations({ includeArchived: true });
+  const { files: kbFiles } = useKnowledgeBase(activeCharacterId);
   const hasSentFirstMessage = useRef(false);
 
   // Get active character
   const activeCharacter = useMemo(
     () => characters.find((c) => c.id === activeCharacterId) ?? characters[0],
-    [characters, activeCharacterId]
+    [characters, activeCharacterId],
+  );
+
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.id === activeConversationId) ?? null,
+    [conversations, activeConversationId],
   );
 
   const [input, setInput] = useState("");
-  const [conversationId, setConversationId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [lastError, setLastError] = useState<ChatError | null>(null);
   const lastUserMessageRef = useRef<string>("");
+  const conversationId = activeConversationId;
+
+  const conversationOverrides: ConversationRagOverrides | null =
+    (activeConversation?.ragOverrides as ConversationRagOverrides | null) ?? null;
+
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    kbFiles.forEach((file) => {
+      file.tags?.forEach((tag) => {
+        const trimmed = tag.trim();
+        if (trimmed) tagSet.add(trimmed);
+      });
+    });
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+  }, [kbFiles]);
+
+  const { ragMode: effectiveRagMode, tagFilters: computedTagFilters } = useMemo(
+    () =>
+      computeEffectiveRagConfig({
+        request: null,
+        conversation: conversationOverrides,
+        character: activeCharacter,
+        global: {
+          enabled: ragSettings.enabled,
+          tagFilters: ragSettings.tagFilters,
+        },
+      }),
+    [conversationOverrides, activeCharacter, ragSettings.enabled, ragSettings.tagFilters],
+  );
+
+  const effectiveRagEnabled = conversationOverrides?.enabled ?? ragSettings.enabled;
+  const effectiveTagFilters = computedTagFilters ?? ragSettings.tagFilters;
+
+  const handleUpdateOverrides = useCallback(
+    (next: ConversationRagOverrides | null) => {
+      if (!conversationId) return;
+      void updateConversation(conversationId, { ragOverrides: next }).catch((err) => {
+        console.error("Failed to update conversation overrides:", err);
+      });
+    },
+    [conversationId, updateConversation],
+  );
 
   // Memoize the transport
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: {
-          characterId: activeCharacter?.id ?? "sam",
+        body: buildChatRequestBody({
+          characterId: activeCharacter?.id,
+          conversationId,
           modelSettings,
-        },
+          enableRAG: effectiveRagEnabled,
+          ragMode: effectiveRagMode,
+          tagFilters: effectiveTagFilters,
+        }),
       }),
-    [activeCharacter?.id, modelSettings]
+    [
+      activeCharacter?.id,
+      conversationId,
+      modelSettings,
+      effectiveRagEnabled,
+      effectiveRagMode,
+      effectiveTagFilters,
+    ],
   );
 
   // Save message to database
-  const saveMessage = useCallback(
-    async (conversationId: string, role: string, content: string) => {
-      try {
-        await fetch(`/api/conversations/${conversationId}/messages`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role, content }),
-        });
-      } catch (err) {
-        console.error("Failed to save message:", err);
-      }
-    },
-    []
-  );
+  const saveMessage = useCallback(async (conversationId: string, role: string, content: string) => {
+    try {
+      await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, content }),
+      });
+    } catch (err) {
+      console.error("Failed to save message:", err);
+    }
+  }, []);
 
   // Create conversation when first message is sent
   const createConversation = useCallback(async () => {
     try {
+      const initialRagOverrides =
+        ragSettings.tagFilters.length > 0
+          ? { tagFilters: ragSettings.tagFilters }
+          : undefined;
+
       const res = await fetch("/api/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ characterId: activeCharacterId }),
+        body: JSON.stringify({
+          characterId: activeCharacterId,
+          ragOverrides: initialRagOverrides,
+        }),
       });
       if (res.ok) {
         const conv = await res.json();
@@ -90,7 +177,7 @@ export function ChatInterface() {
       console.error("Failed to create conversation:", err);
     }
     return null;
-  }, [activeCharacterId, confirmNewChat]);
+  }, [activeCharacterId, confirmNewChat, ragSettings.tagFilters]);
 
   const { messages, sendMessage, status, error } = useChat({
     transport,
@@ -168,7 +255,6 @@ export function ChatInterface() {
       hasSentFirstMessage.current = true;
       const convId = await createConversation();
       if (convId) {
-        setConversationId(convId);
         await saveMessage(convId, "user", userMessage);
       }
     } else if (conversationId) {
@@ -176,14 +262,22 @@ export function ChatInterface() {
     }
 
     void sendMessage({ text: userMessage });
-  }, [input, isLoading, isPendingNewChat, conversationId, createConversation, saveMessage, sendMessage]);
+  }, [
+    input,
+    isLoading,
+    isPendingNewChat,
+    conversationId,
+    createConversation,
+    saveMessage,
+    sendMessage,
+  ]);
 
   // Copy message handler
   const handleCopyMessage = useCallback(
     (id: string, text: string) => {
       void copy(id, text);
     },
-    [copy]
+    [copy],
   );
 
   return (
@@ -192,6 +286,13 @@ export function ChatInterface() {
         character={activeCharacter}
         isLoading={isLoading}
         canExport={canExport}
+        hasActiveConversation={!!conversationId}
+        overrides={conversationOverrides}
+        effectiveRagEnabled={effectiveRagEnabled}
+        effectiveRagMode={effectiveRagMode}
+        tagFilters={effectiveTagFilters}
+        availableTags={availableTags}
+        onUpdateOverrides={handleUpdateOverrides}
         onExportJSON={exportAsJSON}
         onExportMarkdown={exportAsMarkdown}
         onOpenSettings={() => setSettingsOpen(true)}

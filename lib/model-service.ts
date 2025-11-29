@@ -235,7 +235,7 @@ class ModelServiceImpl {
    */
   async checkLmStudioStatus(): Promise<ProviderStatus> {
     const baseUrl = this.getLmStudioBaseUrl();
-    
+
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
@@ -291,10 +291,7 @@ class ModelServiceImpl {
   async checkAllProviders(): Promise<ProviderStatus[]> {
     const lmStudio = await this.checkLmStudioStatus();
 
-    return [
-      this.checkOpenAIStatus(),
-      lmStudio,
-    ];
+    return [this.checkOpenAIStatus(), lmStudio];
   }
 
   /**
@@ -311,7 +308,7 @@ class ModelServiceImpl {
       // For LM Studio, also check if the specific model is loaded
       if (model.provider === "lmstudio" && providerStatus?.available && providerStatus.models) {
         available = providerStatus.models.some(
-          (m) => m === model.id || m.includes(model.id.split("/").pop() ?? "")
+          (m) => m === model.id || m.includes(model.id.split("/").pop() ?? ""),
         );
       }
 

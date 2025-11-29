@@ -95,6 +95,7 @@ const DEFAULT_RAG_SETTINGS: RAGSettings = {
   enabled: false,
   contextRecall: 0.5,
   knowledgeBase: [],
+  tagFilters: [],
 };
 
 // Simple hydration selector - use directly instead of a separate hook
