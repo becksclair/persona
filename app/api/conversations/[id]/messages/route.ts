@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { conversations, messages } from "@/lib/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
+import { Errors } from "@/lib/api-errors";
+import { validateRequest, createMessageSchema } from "@/lib/validations";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -12,7 +13,7 @@ interface RouteContext {
 export async function GET(_req: Request, context: RouteContext) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Errors.unauthorized();
   }
 
   const { id } = await context.params;
@@ -26,7 +27,7 @@ export async function GET(_req: Request, context: RouteContext) {
       .limit(1);
 
     if (!conversation) {
-      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+      return Errors.conversationNotFound();
     }
 
     const result = await db
@@ -35,10 +36,10 @@ export async function GET(_req: Request, context: RouteContext) {
       .where(eq(messages.conversationId, id))
       .orderBy(asc(messages.createdAt));
 
-    return NextResponse.json(result);
+    return Response.json(result);
   } catch (error) {
     console.error("[conversations/id/messages] GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch messages" }, { status: 500 });
+    return Errors.internal("Failed to fetch messages");
   }
 }
 
@@ -46,19 +47,26 @@ export async function GET(_req: Request, context: RouteContext) {
 export async function POST(req: Request, context: RouteContext) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Errors.unauthorized();
   }
 
   const { id } = await context.params;
 
+  let body: unknown;
   try {
-    const body = await req.json();
-    const { role, content, meta } = body;
+    body = await req.json();
+  } catch {
+    return Errors.invalidJson();
+  }
 
-    if (!role || !content) {
-      return NextResponse.json({ error: "role and content required" }, { status: 400 });
-    }
+  const validation = validateRequest(createMessageSchema, body);
+  if (!validation.success) {
+    return Errors.invalidRequest(validation.error);
+  }
 
+  const { role, content, meta } = validation.data;
+
+  try {
     // Verify ownership
     const [conversation] = await db
       .select({ id: conversations.id })
@@ -67,7 +75,7 @@ export async function POST(req: Request, context: RouteContext) {
       .limit(1);
 
     if (!conversation) {
-      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+      return Errors.conversationNotFound();
     }
 
     const [message] = await db
@@ -83,9 +91,9 @@ export async function POST(req: Request, context: RouteContext) {
     // Update conversation timestamp
     await db.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, id));
 
-    return NextResponse.json(message, { status: 201 });
+    return Response.json(message, { status: 201 });
   } catch (error) {
     console.error("[conversations/id/messages] POST error:", error);
-    return NextResponse.json({ error: "Failed to create message" }, { status: 500 });
+    return Errors.internal("Failed to create message");
   }
 }

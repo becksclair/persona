@@ -7,16 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  MoreHorizontal,
-  Trash2,
-  File,
-  Pause,
-  Play,
-  RefreshCw,
-  Tag,
-  Loader2,
-} from "lucide-react";
+import { MoreHorizontal, Trash2, File, Pause, Play, RefreshCw, Tag, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   type KnowledgeBaseFile,
@@ -120,7 +111,10 @@ export function FileCard({
               Re-index
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
             </DropdownMenuItem>

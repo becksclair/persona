@@ -26,11 +26,6 @@ export type {
   CostTier,
 } from "./model-service";
 
-// Legacy aliases for backward compatibility (prefer ModelService directly)
-export const AVAILABLE_MODELS = ModelService.getAvailableModels();
-export const getAvailableModels = () => ModelService.getAvailableModels();
-export const getModelById = (id: string) => ModelService.getModelById(id);
-
 export const PersonalitySchema = z.object({
   id: z.string(),
   name: z.string(),

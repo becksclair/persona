@@ -34,9 +34,8 @@ export function DeleteConfirmDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete File</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete <strong>{file?.fileName}</strong>? This will
-            permanently remove the file and all its indexed embeddings. This action cannot be
-            undone.
+            Are you sure you want to delete <strong>{file?.fileName}</strong>? This will permanently
+            remove the file and all its indexed embeddings. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -34,9 +34,7 @@ function isValidRagMode(mode: unknown): mode is RAGMode {
 
 function normalizeTags(source?: string[] | null): string[] | undefined {
   if (!Array.isArray(source)) return undefined;
-  const cleaned = source
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
+  const cleaned = source.map((t) => t.trim()).filter((t) => t.length > 0);
   return cleaned.length > 0 ? cleaned : undefined;
 }
 

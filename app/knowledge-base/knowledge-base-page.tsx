@@ -26,10 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCharacters } from "@/lib/hooks/use-characters";
-import {
-  useKnowledgeBase,
-  type KnowledgeBaseFile,
-} from "@/lib/hooks/use-knowledge-base";
+import { useKnowledgeBase, type KnowledgeBaseFile } from "@/lib/hooks/use-knowledge-base";
 import { useToast } from "@/lib/hooks/use-toast";
 import { getTagColor } from "@/lib/config/kb-tags";
 import {
@@ -239,10 +236,16 @@ export function KnowledgeBasePage() {
   const handlePause = async (fileId: string) => {
     setFileLoading(fileId, "Pausing");
     // Optimistic update
-    setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, status: "paused" as const } : f)));
+    setFiles((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, status: "paused" as const } : f)),
+    );
     try {
       await updateFile(fileId, "pause");
-      toast({ title: "File paused", description: "Excluded from RAG retrieval.", variant: "success" });
+      toast({
+        title: "File paused",
+        description: "Excluded from RAG retrieval.",
+        variant: "success",
+      });
     } catch (err) {
       toast({
         title: "Failed to pause file",
@@ -260,7 +263,11 @@ export function KnowledgeBasePage() {
     setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, status: "ready" as const } : f)));
     try {
       await updateFile(fileId, "resume");
-      toast({ title: "File resumed", description: "Included in RAG retrieval.", variant: "success" });
+      toast({
+        title: "File resumed",
+        description: "Included in RAG retrieval.",
+        variant: "success",
+      });
     } catch (err) {
       toast({
         title: "Failed to resume file",
@@ -276,7 +283,9 @@ export function KnowledgeBasePage() {
     const file = files.find((f) => f.id === fileId);
     setFileLoading(fileId, "Re-indexing");
     // Optimistic update
-    setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, status: "indexing" as const } : f)));
+    setFiles((prev) =>
+      prev.map((f) => (f.id === fileId ? { ...f, status: "indexing" as const } : f)),
+    );
     try {
       await updateFile(fileId, "reindex");
       toast({
@@ -491,7 +500,9 @@ export function KnowledgeBasePage() {
                     onClick={() => toggleTagFilter(tag)}
                     className={cn(
                       "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-                      isActive ? getTagColor(tag) : "bg-accent/50 text-muted-foreground hover:text-foreground",
+                      isActive
+                        ? getTagColor(tag)
+                        : "bg-accent/50 text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {tag}

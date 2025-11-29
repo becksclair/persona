@@ -1,9 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
 import { characters } from "@/lib/db/schema";
-import {
-  extractPortableFields,
-  type PortableCharacterData,
-} from "@/lib/portable-character";
+import { extractPortableFields, type PortableCharacterData } from "@/lib/portable-character";
 
 export type DbCharacter = InferSelectModel<typeof characters>;
 
@@ -23,9 +20,7 @@ export function characterToPortable(character: DbCharacter): PortableCharacterDa
 /**
  * Convert portable persona data into a Character update payload suitable for DB writes.
  */
-export function portableToCharacterUpdate(
-  data: PortableCharacterData
-): Partial<DbCharacter> {
+export function portableToCharacterUpdate(data: PortableCharacterData): Partial<DbCharacter> {
   return {
     name: data.name,
     avatar: data.avatar ?? null,

@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
-  AVAILABLE_MODELS,
-  getModelById,
+  ModelService,
   ModelSettingsSchema,
   ModelDefinitionSchema,
   ModelProviderSchema,
 } from "@/lib/types";
 
-describe("Model Types (Legacy Compatibility)", () => {
-  describe("AVAILABLE_MODELS", () => {
+describe("Model Types", () => {
+  describe("ModelService.getAvailableModels()", () => {
     it("contains OpenAI cloud models", () => {
-      const openAiModels = AVAILABLE_MODELS.filter((m) => m.provider === "openai");
+      const models = ModelService.getAvailableModels();
+      const openAiModels = models.filter((m) => m.provider === "openai");
       const modelIds = openAiModels.map((m) => m.id);
 
       expect(modelIds).toContain("gpt-4.1");
@@ -18,49 +18,53 @@ describe("Model Types (Legacy Compatibility)", () => {
     });
 
     it("contains LM Studio local model", () => {
-      const lmStudioModels = AVAILABLE_MODELS.filter((m) => m.provider === "lmstudio");
+      const models = ModelService.getAvailableModels();
+      const lmStudioModels = models.filter((m) => m.provider === "lmstudio");
       const modelIds = lmStudioModels.map((m) => m.id);
 
       expect(modelIds).toContain("qwen/qwen3-8b");
     });
 
     it("has valid model definitions", () => {
-      AVAILABLE_MODELS.forEach((model) => {
+      const models = ModelService.getAvailableModels();
+      models.forEach((model) => {
         const result = ModelDefinitionSchema.safeParse(model);
         expect(result.success).toBe(true);
       });
     });
 
     it("all models have context window defined", () => {
-      AVAILABLE_MODELS.forEach((model) => {
+      const models = ModelService.getAvailableModels();
+      models.forEach((model) => {
         expect(model.contextWindow).toBeDefined();
         expect(model.contextWindow).toBeGreaterThan(0);
       });
     });
 
     it("all models have isLocal flag", () => {
-      AVAILABLE_MODELS.forEach((model) => {
+      const models = ModelService.getAvailableModels();
+      models.forEach((model) => {
         expect(typeof model.isLocal).toBe("boolean");
       });
     });
   });
 
-  describe("getModelById", () => {
+  describe("ModelService.getModelById()", () => {
     it("returns correct model for valid id", () => {
-      const model = getModelById("gpt-4.1");
+      const model = ModelService.getModelById("gpt-4.1");
       expect(model).toBeDefined();
       expect(model?.name).toBe("GPT-4.1");
       expect(model?.provider).toBe("openai");
     });
 
     it("returns local model for qwen/qwen3-8b", () => {
-      const model = getModelById("qwen/qwen3-8b");
+      const model = ModelService.getModelById("qwen/qwen3-8b");
       expect(model).toBeDefined();
       expect(model?.provider).toBe("lmstudio");
     });
 
     it("returns undefined for unknown model", () => {
-      const model = getModelById("unknown-model");
+      const model = ModelService.getModelById("unknown-model");
       expect(model).toBeUndefined();
     });
   });

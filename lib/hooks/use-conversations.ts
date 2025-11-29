@@ -89,9 +89,11 @@ export function useConversations(options: UseConversationsOptions | boolean = {}
   }, [fetchConversations, enabled]);
 
   const createConversation = useCallback(
-    async (
-      payload?: { characterId?: string; title?: string; ragOverrides?: ConversationRagOverrides | null },
-    ) => {
+    async (payload?: {
+      characterId?: string;
+      title?: string;
+      ragOverrides?: ConversationRagOverrides | null;
+    }) => {
       const res = await fetch("/api/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -42,8 +42,7 @@ export async function retrieveRelevantMemories(options: {
   const { userId, characterId, query } = options;
   const ragMode = options.ragMode ?? "heavy";
   const baseTopK = options.topK ?? RAGConfigSvc.getDefaultTopK();
-  const effectiveTopK =
-    ragMode === "light" ? Math.max(1, Math.round(baseTopK / 2)) : baseTopK;
+  const effectiveTopK = ragMode === "light" ? Math.max(1, Math.round(baseTopK / 2)) : baseTopK;
   const topK = Math.min(effectiveTopK, RAGConfigSvc.getMaxTopK());
   const minScore = RAGConfigSvc.getMinSimilarityScore();
   const activeTagFilters =
@@ -92,6 +91,8 @@ export async function retrieveRelevantMemories(options: {
 
     // Execute parameterized similarity search
     // Using sql template with proper parameter binding
+    // __low_priority items get a 0.15 similarity penalty to rank them lower
+    const LOW_PRIORITY_PENALTY = 0.15;
     const results = await db.execute<{
       id: string;
       content: string;
@@ -100,15 +101,17 @@ export async function retrieveRelevantMemories(options: {
       tags: string[] | null;
       similarity: number;
     }>(sql`
-      SELECT 
+      SELECT
         id,
         content,
         source_type,
         source_id,
         tags,
-        1 - (embedding <=> ${embeddingLiteral}::vector) as similarity
+        1 - (embedding <=> ${embeddingLiteral}::vector)
+          - CASE WHEN tags @> '["__low_priority"]'::jsonb THEN ${LOW_PRIORITY_PENALTY} ELSE 0 END
+          as similarity
       FROM memory_items
-      WHERE 
+      WHERE
         embedding IS NOT NULL
         AND visibility_policy != 'exclude_from_rag'
         AND (
@@ -147,7 +150,9 @@ export async function retrieveRelevantMemories(options: {
             : sql``
         }
         AND 1 - (embedding <=> ${embeddingLiteral}::vector) >= ${minScore}
-      ORDER BY embedding <=> ${embeddingLiteral}::vector
+      ORDER BY
+        embedding <=> ${embeddingLiteral}::vector
+        + CASE WHEN tags @> '["__low_priority"]'::jsonb THEN ${LOW_PRIORITY_PENALTY} ELSE 0 END
       LIMIT ${topK}
     `);
 

@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { conversations, messages } from "@/lib/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { Errors } from "@/lib/api-errors";
+import { validateRequest, updateConversationSchema } from "@/lib/validations";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -35,7 +35,7 @@ export async function GET(_req: Request, context: RouteContext) {
       .where(eq(messages.conversationId, id))
       .orderBy(asc(messages.createdAt));
 
-    return NextResponse.json({
+    return Response.json({
       ...conversation,
       messages: conversationMessages,
     });
@@ -54,11 +54,21 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   const { id } = await context.params;
 
+  let body: unknown;
   try {
-    const body = await req.json();
-    const { title, isArchived, characterId, modelIdOverride, temperatureOverride, ragOverrides } =
-      body;
+    body = await req.json();
+  } catch {
+    return Errors.invalidJson();
+  }
 
+  const validation = validateRequest(updateConversationSchema, body);
+  if (!validation.success) {
+    return Errors.invalidRequest(validation.error);
+  }
+
+  const { title, isArchived, modelIdOverride, temperatureOverride, ragOverrides } = validation.data;
+
+  try {
     // Verify ownership
     const [existing] = await db
       .select({ id: conversations.id })
@@ -73,7 +83,6 @@ export async function PATCH(req: Request, context: RouteContext) {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (title !== undefined) updates.title = title;
     if (isArchived !== undefined) updates.isArchived = isArchived;
-    if (characterId !== undefined) updates.characterId = characterId;
     if (modelIdOverride !== undefined) updates.modelIdOverride = modelIdOverride;
     if (temperatureOverride !== undefined) updates.temperatureOverride = temperatureOverride;
     if (ragOverrides !== undefined) updates.ragOverrides = ragOverrides;
@@ -84,7 +93,7 @@ export async function PATCH(req: Request, context: RouteContext) {
       .where(eq(conversations.id, id))
       .returning();
 
-    return NextResponse.json(updated);
+    return Response.json(updated);
   } catch (error) {
     console.error("[conversations/id] PATCH error:", error);
     return Errors.internal("Failed to update conversation");
@@ -117,7 +126,7 @@ export async function DELETE(_req: Request, context: RouteContext) {
 
     // TODO: Delete associated embeddings from memory_items when RAG is implemented
 
-    return NextResponse.json({ success: true });
+    return Response.json({ success: true });
   } catch (error) {
     console.error("[conversations/id] DELETE error:", error);
     return Errors.internal("Failed to delete conversation");

@@ -179,6 +179,8 @@ export const conversations = pgTable(
     index("conversations_user_id_idx").on(table.userId),
     index("conversations_character_id_idx").on(table.characterId),
     index("conversations_archived_idx").on(table.isArchived),
+    // Composite index for common query pattern: user's active conversations
+    index("conversations_user_archived_idx").on(table.userId, table.isArchived),
   ],
 );
 
@@ -215,6 +217,8 @@ export const messages = pgTable(
     index("messages_conversation_id_idx").on(table.conversationId),
     index("messages_role_idx").on(table.role),
     index("messages_created_at_idx").on(table.createdAt),
+    // Composite index for fetching last message per conversation (used by lateral join)
+    index("messages_conv_created_desc_idx").on(table.conversationId, table.createdAt),
   ],
 );
 

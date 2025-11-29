@@ -23,7 +23,11 @@ import * as SnapshotsRoute from "@/app/api/characters/[id]/snapshots/route";
 import * as RestoreRoute from "@/app/api/characters/[id]/snapshots/[snapshotId]/restore/route";
 
 const mockGetCurrentUser = getCurrentUser as unknown as vi.Mock;
-const { select: mockSelect, insert: mockInsert, update: mockUpdate } = db as unknown as {
+const {
+  select: mockSelect,
+  insert: mockInsert,
+  update: mockUpdate,
+} = db as unknown as {
   select: vi.Mock;
   insert: vi.Mock;
   update: vi.Mock;
@@ -189,10 +193,7 @@ describe("snapshot routes", () => {
     }));
 
     const res = await RestoreRoute.POST(
-      buildRequest(
-        "http://localhost/api/characters/char-1/snapshots/snap-1/restore",
-        "POST",
-      ),
+      buildRequest("http://localhost/api/characters/char-1/snapshots/snap-1/restore", "POST"),
       { params: Promise.resolve({ id: "char-1", snapshotId: "snap-1" }) },
     );
 

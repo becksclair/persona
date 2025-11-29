@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { Download, FileJson, FileText, Settings, Loader2, Brain } from "lucide-react";
+import { Download, FileJson, FileText, Settings, Loader2, Brain, Sparkles } from "lucide-react";
 import type { ConversationRagOverrides, RAGMode } from "@/lib/types";
 import type { Character } from "./types";
+import { useMemoryInspectorStore } from "@/lib/memory-inspector-store";
 
 interface ChatHeaderProps {
   character: Character | undefined;
@@ -45,12 +46,16 @@ export function ChatHeader({
   onExportMarkdown,
   onOpenSettings,
 }: ChatHeaderProps) {
+  const toggleInspector = useMemoryInspectorStore((s) => s.toggleOpen);
+  const inspectorOpen = useMemoryInspectorStore((s) => s.isOpen);
+  const inspectorRecords = useMemoryInspectorStore((s) => s.records);
+  const recordsWithContext = inspectorRecords.filter((r) => r.memoryItemIds.length > 0);
 
   const hasCustomOverrides = Boolean(
     overrides &&
-      (overrides.enabled !== undefined ||
-        overrides.mode !== undefined ||
-        (overrides.tagFilters && overrides.tagFilters.length > 0)),
+    (overrides.enabled !== undefined ||
+      overrides.mode !== undefined ||
+      (overrides.tagFilters && overrides.tagFilters.length > 0)),
   );
 
   return (
@@ -86,10 +91,7 @@ export function ChatHeader({
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn(
-                  "relative h-8 w-8",
-                  hasCustomOverrides && "text-emerald-400",
-                )}
+                className={cn("relative h-8 w-8", hasCustomOverrides && "text-emerald-400")}
                 aria-label="Memory overrides"
               >
                 <Brain className="h-4 w-4" />
@@ -204,6 +206,21 @@ export function ChatHeader({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("relative h-8 w-8", inspectorOpen && "text-primary bg-primary/10")}
+          onClick={toggleInspector}
+          aria-label="Toggle memory inspector"
+        >
+          <Sparkles className="h-4 w-4" />
+          {recordsWithContext.length > 0 && !inspectorOpen && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-medium text-primary-foreground shadow-[0_0_0_1px_rgba(15,23,42,1)]">
+              {recordsWithContext.length > 9 ? "9+" : recordsWithContext.length}
+            </span>
+          )}
+        </Button>
 
         {canExport && (
           <DropdownMenu>

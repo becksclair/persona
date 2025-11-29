@@ -16,6 +16,8 @@ import { eventBus, Events } from "@/lib/events";
 import type { ConversationRagOverrides, RAGMode, ModelSettings } from "@/lib/types";
 import { computeEffectiveRagConfig } from "@/lib/rag/effective-config";
 import { SettingsDialog } from "@/components/settings-dialog";
+import { MemoryInspectorPanel } from "@/components/memory-inspector";
+import { useMemoryInspectorStore } from "@/lib/memory-inspector-store";
 
 import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
@@ -51,6 +53,11 @@ export function ChatInterface() {
   const { conversations, updateConversation } = useConversations({ includeArchived: true });
   const { files: kbFiles } = useKnowledgeBase(activeCharacterId);
   const hasSentFirstMessage = useRef(false);
+
+  // Memory Inspector state
+  const addInspectorRecord = useMemoryInspectorStore((s) => s.addRecord);
+  const clearInspectorSession = useMemoryInspectorStore((s) => s.clearSession);
+  const lastMemoryItemsRef = useRef<string[]>([]);
 
   // Get active character
   const activeCharacter = useMemo(
@@ -100,6 +107,11 @@ export function ChatInterface() {
   const effectiveRagEnabled = conversationOverrides?.enabled ?? ragSettings.enabled;
   const effectiveTagFilters = computedTagFilters ?? ragSettings.tagFilters;
 
+  // Clear inspector session when conversation changes
+  useEffect(() => {
+    clearInspectorSession();
+  }, [activeConversationId, clearInspectorSession]);
+
   const handleUpdateOverrides = useCallback(
     (next: ConversationRagOverrides | null) => {
       if (!conversationId) return;
@@ -110,7 +122,24 @@ export function ChatInterface() {
     [conversationId, updateConversation],
   );
 
-  // Memoize the transport
+  // Custom fetch to capture X-Memory-Items-Used header
+  const customFetch = useCallback(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await fetch(input, init);
+    // Capture memory items from header for inspector
+    try {
+      const memoryHeader = response.headers.get("X-Memory-Items-Used");
+      if (memoryHeader) {
+        lastMemoryItemsRef.current = JSON.parse(memoryHeader);
+      } else {
+        lastMemoryItemsRef.current = [];
+      }
+    } catch {
+      lastMemoryItemsRef.current = [];
+    }
+    return response;
+  }, []);
+
+  // Memoize the transport with custom fetch
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -123,6 +152,7 @@ export function ChatInterface() {
           ragMode: effectiveRagMode,
           tagFilters: effectiveTagFilters,
         }),
+        fetch: customFetch,
       }),
     [
       activeCharacter?.id,
@@ -131,29 +161,36 @@ export function ChatInterface() {
       effectiveRagEnabled,
       effectiveRagMode,
       effectiveTagFilters,
+      customFetch,
     ],
   );
 
-  // Save message to database
-  const saveMessage = useCallback(async (conversationId: string, role: string, content: string) => {
-    try {
-      await fetch(`/api/conversations/${conversationId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, content }),
-      });
-    } catch (err) {
-      console.error("Failed to save message:", err);
-    }
-  }, []);
+  // Save message to database with optional meta (memoryItemsUsed)
+  const saveMessage = useCallback(
+    async (
+      conversationId: string,
+      role: string,
+      content: string,
+      meta?: { memoryItemsUsed?: string[] },
+    ) => {
+      try {
+        await fetch(`/api/conversations/${conversationId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role, content, meta: meta ?? null }),
+        });
+      } catch (err) {
+        console.error("Failed to save message:", err);
+      }
+    },
+    [],
+  );
 
   // Create conversation when first message is sent
   const createConversation = useCallback(async () => {
     try {
       const initialRagOverrides =
-        ragSettings.tagFilters.length > 0
-          ? { tagFilters: ragSettings.tagFilters }
-          : undefined;
+        ragSettings.tagFilters.length > 0 ? { tagFilters: ragSettings.tagFilters } : undefined;
 
       const res = await fetch("/api/conversations", {
         method: "POST",
@@ -188,9 +225,28 @@ export function ChatInterface() {
     onFinish: async ({ message }) => {
       setLastError(null);
       const textContent = getMessageText(message);
+
+      // Capture memory items for this response
+      const memoryItemsUsed = lastMemoryItemsRef.current;
+
+      // Add record to memory inspector
+      addInspectorRecord({
+        messageId: message.id,
+        role: "assistant",
+        contentPreview: textContent?.slice(0, 80) ?? "",
+        memoryItemIds: memoryItemsUsed,
+        timestamp: new Date(),
+      });
+
+      // Save to DB with meta
       if (conversationId && textContent) {
-        await saveMessage(conversationId, "assistant", textContent);
+        await saveMessage(conversationId, "assistant", textContent, {
+          memoryItemsUsed: memoryItemsUsed.length > 0 ? memoryItemsUsed : undefined,
+        });
       }
+
+      // Clear ref for next message
+      lastMemoryItemsRef.current = [];
     },
   });
 
@@ -313,6 +369,8 @@ export function ChatInterface() {
           <ChatErrorBanner error={lastError} onRetry={() => void handleRetry()} />
         </div>
       )}
+
+      <MemoryInspectorPanel />
 
       <ChatInput
         value={input}

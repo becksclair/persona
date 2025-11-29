@@ -1,14 +1,20 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { conversations, messages, characters } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { conversations } from "@/lib/db/schema";
+import { sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
+import { Errors } from "@/lib/api-errors";
+import { validateRequest, createConversationSchema } from "@/lib/validations";
+import { LIMITS } from "@/lib/constants";
+import type { ConversationWithPreview } from "@/lib/api-types";
 
-// GET /api/conversations - List conversations for current user
+/**
+ * GET /api/conversations - List conversations for current user
+ * Uses a single query with lateral join to fetch last message (fixes N+1 problem)
+ */
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Errors.unauthorized();
   }
 
   const url = new URL(req.url);
@@ -16,69 +22,111 @@ export async function GET(req: Request) {
   const characterId = url.searchParams.get("characterId");
 
   try {
-    const whereConditions = [eq(conversations.userId, user.userId)];
+    // Build WHERE conditions
+    const archivedCondition = includeArchived ? sql`true` : sql`c.is_archived = false`;
+    const characterCondition = characterId ? sql`AND c.character_id = ${characterId}::uuid` : sql``;
 
-    if (!includeArchived) {
-      whereConditions.push(eq(conversations.isArchived, false));
-    }
+    // Single query with lateral join for last message (O(1) instead of O(n) queries)
+    const result = await db.execute<{
+      id: string;
+      title: string | null;
+      character_id: string | null;
+      character_name: string | null;
+      character_avatar: string | null;
+      is_archived: boolean;
+      rag_overrides: Record<string, unknown> | null;
+      created_at: Date;
+      updated_at: Date;
+      last_message: string | null;
+      last_message_role: string | null;
+    }>(sql`
+      SELECT
+        c.id,
+        c.title,
+        c.character_id,
+        ch.name as character_name,
+        ch.avatar as character_avatar,
+        c.is_archived,
+        c.rag_overrides,
+        c.created_at,
+        c.updated_at,
+        lm.content as last_message,
+        lm.role as last_message_role
+      FROM conversations c
+      LEFT JOIN characters ch ON c.character_id = ch.id
+      LEFT JOIN LATERAL (
+        SELECT content, role
+        FROM messages
+        WHERE conversation_id = c.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) lm ON true
+      WHERE c.user_id = ${user.userId}::uuid
+        AND ${archivedCondition}
+        ${characterCondition}
+      ORDER BY c.updated_at DESC
+    `);
 
-    if (characterId) {
-      whereConditions.push(eq(conversations.characterId, characterId));
-    }
+    // Map to API response type
+    const conversationsWithPreview: ConversationWithPreview[] = (
+      result as unknown as Array<{
+        id: string;
+        title: string | null;
+        character_id: string | null;
+        character_name: string | null;
+        character_avatar: string | null;
+        is_archived: boolean;
+        rag_overrides: Record<string, unknown> | null;
+        created_at: Date;
+        updated_at: Date;
+        last_message: string | null;
+        last_message_role: string | null;
+      }>
+    ).map((row) => ({
+      id: row.id,
+      title: row.title,
+      characterId: row.character_id,
+      characterName: row.character_name,
+      characterAvatar: row.character_avatar,
+      isArchived: row.is_archived,
+      ragOverrides: row.rag_overrides as ConversationWithPreview["ragOverrides"],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      lastMessage: row.last_message?.slice(0, LIMITS.messagePreview) ?? null,
+      lastMessageRole: row.last_message_role as "user" | "assistant" | null,
+    }));
 
-    const result = await db
-      .select({
-        id: conversations.id,
-        title: conversations.title,
-        characterId: conversations.characterId,
-        characterName: characters.name,
-        characterAvatar: characters.avatar,
-        isArchived: conversations.isArchived,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        ragOverrides: conversations.ragOverrides,
-      })
-      .from(conversations)
-      .leftJoin(characters, eq(conversations.characterId, characters.id))
-      .where(and(...whereConditions))
-      .orderBy(desc(conversations.updatedAt));
-
-    // Get last message preview for each conversation
-    const conversationsWithPreview = await Promise.all(
-      result.map(async (conv) => {
-        const [lastMessage] = await db
-          .select({ content: messages.content, role: messages.role })
-          .from(messages)
-          .where(eq(messages.conversationId, conv.id))
-          .orderBy(desc(messages.createdAt))
-          .limit(1);
-
-        return {
-          ...conv,
-          lastMessage: lastMessage?.content?.slice(0, 100) ?? null,
-          lastMessageRole: lastMessage?.role ?? null,
-        };
-      }),
-    );
-
-    return NextResponse.json(conversationsWithPreview);
+    return Response.json(conversationsWithPreview);
   } catch (error) {
     console.error("[conversations] GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch conversations" }, { status: 500 });
+    return Errors.internal("Failed to fetch conversations");
   }
 }
 
-// POST /api/conversations - Create a new conversation
+/**
+ * POST /api/conversations - Create a new conversation
+ */
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return Errors.unauthorized();
   }
 
+  let body: unknown;
   try {
-    const body = await req.json();
-    const { characterId, title, ragOverrides } = body;
+    body = await req.json();
+  } catch {
+    return Errors.invalidJson();
+  }
 
+  const validation = validateRequest(createConversationSchema, body);
+  if (!validation.success) {
+    return Errors.invalidRequest(validation.error);
+  }
+
+  const { characterId, title, ragOverrides } = validation.data;
+
+  try {
     const [conversation] = await db
       .insert(conversations)
       .values({
@@ -89,9 +137,9 @@ export async function POST(req: Request) {
       })
       .returning();
 
-    return NextResponse.json(conversation, { status: 201 });
+    return Response.json(conversation, { status: 201 });
   } catch (error) {
     console.error("[conversations] POST error:", error);
-    return NextResponse.json({ error: "Failed to create conversation" }, { status: 500 });
+    return Errors.internal("Failed to create conversation");
   }
 }

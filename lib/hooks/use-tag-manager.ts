@@ -20,13 +20,10 @@ export function useTagManager(options: UseTagManagerOptions = {}) {
     [onChange],
   );
 
-  const reset = useCallback(
-    (newTags: string[] = []) => {
-      setTagsInternal(newTags);
-      setCustomTagInput("");
-    },
-    [],
-  );
+  const reset = useCallback((newTags: string[] = []) => {
+    setTagsInternal(newTags);
+    setCustomTagInput("");
+  }, []);
 
   const addTag = useCallback(
     (tag: string) => {

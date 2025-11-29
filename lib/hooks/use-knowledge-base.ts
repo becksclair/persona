@@ -167,34 +167,31 @@ export function useKnowledgeBase(characterId: string | null) {
   );
 
   // Update tags only (dedicated action)
-  const updateTags = useCallback(
-    async (fileId: string, tags: string[]) => {
-      setError(null);
+  const updateTags = useCallback(async (fileId: string, tags: string[]) => {
+    setError(null);
 
-      try {
-        const res = await fetch(`/api/knowledge-base/${fileId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "updateTags", tags }),
-        });
+    try {
+      const res = await fetch(`/api/knowledge-base/${fileId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "updateTags", tags }),
+      });
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.message ?? "Failed to update tags");
-        }
-
-        const updated = await res.json();
-        // Update local state
-        setFiles((prev) => prev.map((f) => (f.id === fileId ? updated : f)));
-        return updated as KnowledgeBaseFile;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to update tags";
-        setError(message);
-        throw err;
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message ?? "Failed to update tags");
       }
-    },
-    [],
-  );
+
+      const updated = await res.json();
+      // Update local state
+      setFiles((prev) => prev.map((f) => (f.id === fileId ? updated : f)));
+      return updated as KnowledgeBaseFile;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update tags";
+      setError(message);
+      throw err;
+    }
+  }, []);
 
   // Delete file
   const deleteFile = useCallback(

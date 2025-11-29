@@ -142,17 +142,17 @@ describe("RAG Retrieval", () => {
       expect(result).toBeDefined();
     });
 
-		it("returns no memories when ragMode is ignore", async () => {
-			const result = await retrieveRelevantMemories({
-				userId: TEST_UUIDS.nonExistentUser,
-				query: "test query",
-				ragMode: "ignore",
-				topK: 10,
-			});
+    it("returns no memories when ragMode is ignore", async () => {
+      const result = await retrieveRelevantMemories({
+        userId: TEST_UUIDS.nonExistentUser,
+        query: "test query",
+        ragMode: "ignore",
+        topK: 10,
+      });
 
-			expect(result.topK).toBe(0);
-			expect(result.memories).toEqual([]);
-		});
+      expect(result.topK).toBe(0);
+      expect(result.memories).toEqual([]);
+    });
   });
 
   describe("formatMemoriesForPrompt", () => {

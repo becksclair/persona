@@ -67,8 +67,7 @@ export function UploadDialog({ open, onOpenChange, uploading, onUpload }: Upload
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
           <DialogDescription>
-            Upload a file to the knowledge base. It will be indexed and available for RAG
-            retrieval.
+            Upload a file to the knowledge base. It will be indexed and available for RAG retrieval.
           </DialogDescription>
         </DialogHeader>
 

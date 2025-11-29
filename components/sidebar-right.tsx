@@ -60,8 +60,14 @@ export function SidebarRight() {
   const [searchQuery, setSearchQuery] = useState("");
   const [providerStatus, setProviderStatus] = useState<ProviderStatus[]>([]);
   const { modelSettings, updateModelSettings, ragSettings, updateRAGSettings } = useAppStore();
-  const { characters, loading, duplicateCharacter, archiveCharacter, deleteCharacter, updateCharacter } =
-    useCharacters();
+  const {
+    characters,
+    loading,
+    duplicateCharacter,
+    archiveCharacter,
+    deleteCharacter,
+    updateCharacter,
+  } = useCharacters();
   const { activeCharacterId, setActiveCharacter, startNewChat } = useChatStore();
   const {
     files: kbFiles,

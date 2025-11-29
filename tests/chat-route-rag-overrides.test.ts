@@ -24,18 +24,21 @@ vi.mock("@/lib/rag", () => {
 
   const normalizeTags = (source: unknown): string[] | undefined => {
     if (!Array.isArray(source)) return undefined;
-    const cleaned = source
-      .map((t) => String(t).trim())
-      .filter((t) => t.length > 0);
+    const cleaned = source.map((t) => String(t).trim()).filter((t) => t.length > 0);
     return cleaned.length > 0 ? cleaned : undefined;
   };
 
-  const computeEffectiveRagConfig = (sources: {
-    request?: { ragMode?: unknown; tagFilters?: unknown } | null;
-    conversation?: { mode?: unknown; tagFilters?: unknown } | null;
-    character?: { ragMode?: unknown } | null;
-    global?: { tagFilters?: unknown } | null;
-  } | null | undefined) => {
+  const computeEffectiveRagConfig = (
+    sources:
+      | {
+          request?: { ragMode?: unknown; tagFilters?: unknown } | null;
+          conversation?: { mode?: unknown; tagFilters?: unknown } | null;
+          character?: { ragMode?: unknown } | null;
+          global?: { tagFilters?: unknown } | null;
+        }
+      | null
+      | undefined,
+  ) => {
     const { request, conversation, character, global } = sources ?? {};
 
     const requestMode = request?.ragMode;
@@ -81,7 +84,30 @@ vi.mock("@/lib/model-service", () => ({
 
 vi.mock("@/lib/prompts", () => ({
   buildSystemPrompt: vi.fn(() => "You are a test assistant."),
-  FALLBACK_PROMPTS: { sam: "You are Sam." },
+}));
+
+vi.mock("@/lib/api-errors", () => ({
+  Errors: {
+    unauthorized: vi.fn(
+      () => new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
+    ),
+    invalidJson: vi.fn(
+      () => new Response(JSON.stringify({ error: "invalid json" }), { status: 400 }),
+    ),
+    invalidRequest: vi.fn(
+      (msg: string) => new Response(JSON.stringify({ error: msg }), { status: 400 }),
+    ),
+    internal: vi.fn((msg: string) => new Response(JSON.stringify({ error: msg }), { status: 500 })),
+  },
+}));
+
+vi.mock("@/lib/validations", () => ({
+  validateRequest: vi.fn((schema: unknown, data: unknown) => ({ success: true, data })),
+  chatRequestSchema: {},
+}));
+
+vi.mock("@/lib/constants", () => ({
+  DEFAULT_SYSTEM_PROMPT: "You are a helpful AI assistant.",
 }));
 
 vi.mock("ai", () => ({
